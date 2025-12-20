@@ -1,0 +1,37 @@
+:PROPERTIES:
+:ID:       04cfd177-1232-4aa3-9cd3-b4af16cb32d4
+:END:
+#+title: 位运算
+#+filetags: cpp
+
+* 位运算 [[https://www.runoob.com/w3cnote/bit-operation.html][菜鸟教程]]
+- &（与）    :: 都为1则1
+#+begin_example bash
+0 & 0 = 0
+0 & 1 = 0
+1 & 0 = 0
+1 & 1 = 1
+#+end_example
+
+- |（或）    :: 都为0则0
+#+begin_example bash
+0 | 0 = 0
+0 | 1 = 1
+1 | 0 = 1
+1 | 1 = 1
+#+end_example
+
+- ^（异或）  :: 相同0，不同1,
+#+begin_example bash
+0 ^ 0 = 0
+0 ^ 1 = 1
+1 ^ 0 = 1
+1 ^ 1 = 0
+#+end_example
+对于任何数 x，都有 =x ^ x = 0= ， =x ^ 0 = x=
+
+- ~（取反）  :: 0变1，1变0
+
+- <<（左移） :: 各二进位全部左移若干位，高位丢弃，低位补0
+
+- >>（右移） :: 各二进位全部右移若干位，高位补0或符号位补齐

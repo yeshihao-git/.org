@@ -1,0 +1,47 @@
+:PROPERTIES:
+:ID:       af95b680-5ef1-4b47-aa52-65a7e3d9261a
+:END:
+#+title: C语言
+#+filetags: c
+
+C 语言中变量的默认值取决于其类型和作用域。全局变量和静态变量的默认值为 0，字符型变量的默认值为 \0，指针变量的默认值为 NULL，而局部变量没有默认值，其初始值是未定义的。
+
+
+
+变量声明只在编译时有它的意义，在程序连接时编译器需要实际的变量声明
+变量的声明有两种情况：
+
+1、一种是需要建立存储空间的。例如：int a 在声明的时候就已经建立了存储空间。
+2、另一种是不需要建立存储空间的，通过使用extern关键字声明变量名而不定义它。 例如：extern int a 其中变量 a 可以在别的文件中定义的。
+除非有 extern 关键字，否则都是变量的定义。
+
+extern int i; //声明，不是定义
+int i; //声明，也是定义
+
+
+
+type arrayName [ arraySize ];
+这叫做一维数组。arraySize 必须是一个大于零的 *整数常量*
+
+在 C 语言中，数组名表示数组的地址，即数组首元素的地址。当我们在声明和定义一个数组时，该数组名就代表着该数组的地址。
+int myArray[5] = {10, 20, 30, 40, 50};
+int *ptr = &myArray[0]; // 或者直接写作 int *ptr = myArray;
+
+
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+void printArray(int arr[], int size) { // 这里int arr[] 自动装换为指针，因此等同于 int* arr
+    for (int i = 0; i < size; i++) {
+        printf("%d ", arr[i]); // 数组名arr被当作指针使用
+    }
+}
+
+int main() {
+    int myArray[5] = {10, 20, 30, 40, 50};
+    printArray(myArray, 5); // 将数组名传递给函数
+    return 0;
+}
+#+end_src
+
+
+
+枚举和switch搭配使用
