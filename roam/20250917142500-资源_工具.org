@@ -24,6 +24,7 @@
                 vscode
 - 笔记       :: emacs：org-mode
                 drawio
+- 文本编辑器 :: kate
 - 截屏       :: Snipaste
 - 代理       :: clash verge
 - 浏览器     :: Chrome

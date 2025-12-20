@@ -4,14 +4,80 @@
 #+title: arch
 #+filetags: linux
 
-* 概念
-** 简介
-[[id:ec7aef91-2628-4ba9-b300-16652314877f][linux]]的一个发行版
-** systemd
-systemd管理各种单元，单元有多种类型。
-- 服务(.service)
-  在后台运行，没有界面，等待特定事件发生并提供服务。历史上称守护进程
-- 挂载点(.mount)
-- 设备(.device)
-- 套接字(.socket)
-主要命令：[[id:5a19e8de-05ec-4bae-bf70-54b24b63c412][systemctl]]
+* arch
+[[id:ec7aef91-2628-4ba9-b300-16652314877f][linux]]的一个发行版；使用 systemd 作为默认的 init系统 与 服务管理器；pacman 作为默认的包管理器
+
+
+* pacman
+:PROPERTIES:
+:ID:       fe221daa-775a-4b53-a00f-1700a6698e9f
+:END:
+arch linux 和 windows上msys2 的默认包管理工具
+
+** 快速开始
+#+name: 改镜像
+#+begin_example bash
+vim /etc/pacman.conf
+#+end_example
+
+#+name: 包的 安装/卸载/查询/升级降级
+#+begin_example bash
+pacman -S <包>  # 安装包
+pacman -Ss <包> # 远程搜索包（模糊搜索）
+pacman -Sy      # 更新同步数据库（同步数据库：/var/lib/pacman/sync）
+pacman -Syu     # 更新同步数据库、升级所有已安装软件
+
+pacman -R <包>  # 删除软件
+pacman -Rn <包> # 删除软件+配置
+
+pacman -Q <包>  # 本地搜索包（精确搜索）（本地数据库：/var/lib/pacman/local）
+pacman -Qs <包> # 本地搜索包（模糊搜索）
+pacman -Ql <包> # 列出包中的所有文件（包含头文件、库文件等）
+
+pacman -U <包>  # 用包缓存目录中的包升级降级包（包缓存目录：/var/cache/pacman/pkg）
+#+end_example
+pacman -U /var/cache/pacman/pkg/freetype2-2.13.0-1-x86_64.pkg.tar.zst
+
+** arch linux的wps乱码问题 [[https://bbs.archlinux.org/viewtopic.php?id=288562][参考]]
+:PROPERTIES:
+:ID:       6c057be0-010b-4a00-b89c-64939dd99996
+:END:
+#+name: 给freetype降级
+#+begin_example
+pacman -U /var/cache/pacman/pkg/freetype2-2.13.0-1-x86_64.pkg.tar.zst
+#+end_example
+
+
+* systemd
+systemd 是 arch 默认的init进程（PID 1）；配套了一系列的命令行工具：
+1. systemctl ：服务管理
+2. journalctl：日志管理
+3. networkctl：网络管理
+4. loginctl  ：登录管理
+
+** systemctl
+:PROPERTIES:
+:ID:       37810e04-b5c7-4d84-bcc3-e77239b9c877
+:END:
+用于管理系统服务
+
+*** 快速开始
+|----------+-------------------------------+--------------------------|
+|          | 命令                          | 功能                     |
+|----------+-------------------------------+--------------------------|
+| 系统管理 | systemctl enable <服务名>     | 设置开机自启             |
+|          | systemctl disable <服务名>    | 取消开机自启             |
+|          | systemctl poweroff            | 关机                     |
+|          | systemctl reboot              | 重启                     |
+|          | systemctl suspend             | 睡眠                     |
+|----------+-------------------------------+--------------------------|
+| 服务管理 | systemctl start <服务名>      | 启动服务                 |
+|          | systemctl stop <服务名>       | 停止服务                 |
+|          | systemctl restart <服务名>    | 重启服务                 |
+|          | systemctl reload <服务名>     | 重新加载配置(不中断服务) |
+|          | systemctl status <服务名>     | 查看服务状态             |
+|          | systemctl cat <服务名>        | 查看服务配置             |
+|          | systemctl is-active <服务名>  | 检查服务是否运行         |
+|          | systemctl is-enabled <服务名> | 检查服务是否开机自启     |
+|          | systemctl is-failed <服务名>  | 检查服务是否启动失败     |
+|----------+-------------------------------+--------------------------|

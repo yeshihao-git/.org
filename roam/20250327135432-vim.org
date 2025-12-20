@@ -2,41 +2,134 @@
 :ID:       56480af0-4c4d-49a5-8f50-abe024b083f1
 :END:
 #+title: vim
+#+filetags: tools
 
-* 使用
-** leetcode vim模式无法复制文本到系统剪切板[fn:1]
+* 快速开始
+#+name: 普通模式 -> 插入模式
+#+begin_example bash
+o      # 在下⽅插⼊⼀⾏
+O      # 在上⽅插⼊⼀⾏
+a      # 在当前光标后插⼊
+i      # 在当前光标前插⼊
+A      # NOTE 在⾏尾插⼊
+I      # NOTE 在⾏⾸插⼊
+C      # NOTE 删除到⾏尾并进入插入模式
+#+end_example
+
+#+name: 光标移动
+#+begin_example bash
+hjkl # 上下左右
+gg   # 移动到第⼀⾏
+G    # 移动到最后⼀⾏/指定⾏
+w    # 移动到下⼀个单词的开头
+e    # 移动到下⼀个单词的结尾
+b    # 移动到上⼀个单词的开头
+0    # 移动到⾏⾸
+^    # 移动到第⼀个⾮空字符
+$    # 移动到⾏尾
+%    # NOTE 移动到匹配的括号处
+gd   # 移动到变量定义处
+#+end_example
+
+#+name: 复制/粘贴/删除
+#+begin_example bash
+y  # 复制
+yy # 复制一行
+p  # 粘贴
+x  # 删除字符
+dd # 删除整⾏
+D  # 删除到⾏尾
+#+end_example
+
+#+name: 搜索/替换
+#+begin_example bash
+/                         # 搜索下⼀个
+?                         # 搜索上⼀个
+​# / *                     # NOTE 快速搜索当前单词
+r                         # 替换单个字符
+R                         # 持续替换字符
+~                         # NOTE 修改⼤⼩写
+:[range]s/from/to/[flags] # 将 range 范围内的 from 替换为 to
+#+end_example
+范围替换使用方法见：[fn:1]
+
+#+name: 撤销/重做
+#+begin_example bash
+u   # 撤销
+C-r # NOTE 重做
+#+end_example
+
+#+name: 宏
+#+begin_example bash
+# ⽣成从 1 到 1000 的序列
+q[abcd] # NOTE 录制宏到寄存器a/b/c/d
+q       # NOTE 停止录制
+@[abcd] # NOTE 回放宏a/b/c/d
+:reg [abcd] # 查看寄存器a/b/c/d中存储的宏操作
+#+end_example
+
+#+name: 窗口管理
+#+begin_example bash
+:sp        # 横向分屏
+:vsp       # 纵向分屏
+C-w [hjkl] # 切换窗口
+C-w [HJKL] # 改变窗口方向（H：左、J：下、K：上、L：右）
+C-w q      # 关闭窗口
+C-w w      # 循环切换窗口
+#+end_example
+
+#+name: 标记
+#+begin_example bash
+m  # ⽣成标签
+`  # 跳转
+#+end_example
+
+#+name: 可视模式
+#+begin_example bash
+v   # 进入可视模式
+V   # 选中一行进入可视模式
+C-v # 选中块进入可视模式
+#+end_example
+
+#+name: 操作系统
+#+begin_example bash
+:e .       # 打开当前目录
+:cd <目录> # 进入目录
+#+end_example
+
+#+name: 退出
+#+begin_example bash
+:wq # 保存并退出
+:q! # 强制退出
+#+end_example
+
+
+* leetcode vim模式复制文本到系统剪切板
 1. 鼠标选中
 2. Ctrl + Insert
-** vim批量注释
+
+
+* vim批量注释
 1. Ctrl + v
 2. jk选择要注释的行
 3. I => 输入注释符号
 4. Esc
 
 
-
-* 查询
-| 命令                      | 作用                   |
-|---------------------------+------------------------|
-| :set number[fn:2]         | 设置绝对行号           |
-| :set relativenumber[fn:3] | 设置相对行号(方便跳转) |
-| :e .                      | 打开当前目录           |
-| :cd <目录>                | 进入目录               |
-| C-r                       | redo                   |
-|---------------------------+------------------------|
-| 0                         | 行首                   |
-| ^                         | 行首(不包含空格)       |
-| $                         | 行尾                   |
-| D                         | 删除光标至行尾         |
-|---------------------------+------------------------|
-| V                         | 可视模式(行)           |
-
-
-
-
-
 * Footnotes
 
-[fn:3] 简写：rnu
-[fn:2] 简写：nu
-[fn:1] 参考链接:[[https://blog.csdn.net/m0_58636750/article/details/139057757][刷leecode小技巧:LeetCode代码编辑器vim模式无法复制文本到系统剪贴板]]
+[fn:1]
+|-------+--------------------------------------------+-------------------|
+| Range | Description                                | Example           |
+|-------+--------------------------------------------+-------------------|
+| 21    | line 21                                    | :21s/old/new/g    |
+| 1     | first line                                 | :1s/old/new/g     |
+| $     | last line                                  | :$s/old/new/g     |
+| %     | all lines (same as 1,$ )                   | :%s/old/new/g     |
+| 21,25 | lines 21 to 25 inclusive                   | :21,25s/old/new/g |
+| 21,$  | lines 21 to end                            | :21,$s/old/new/g  |
+| .,$   | current line to end                        | :.,$s/old/new/g   |
+| .+1,$ | line after current line to end             | :.+1,$s/old/new/g |
+| .,.+5 | six lines (current to current+5 inclusive) | :.,.+5s/old/new/g |
+| .,.5  | same ( .5 is interpreted as .+5 )          | :.,.5s/old/new/g  |
+|-------+--------------------------------------------+-------------------|

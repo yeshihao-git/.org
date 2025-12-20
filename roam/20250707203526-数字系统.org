@@ -1,10 +1,10 @@
 :PROPERTIES:
 :ID:       9fa145ba-0c4f-4553-87e2-70732f2eafc3
 :END:
-#+title: 数字系统(十、二、十六、八进制)
+#+title: 进制转换(十、二、十六、八进制)
 #+filetags: cpp
 
-* 数字系统(十、二、十六、八进制) [[https://www.learncpp.com/cpp-tutorial/numeral-systems-decimal-binary-hexadecimal-and-octal/][参考]]
+* 进制转换(十、二、十六、八进制) [[https://www.learncpp.com/cpp-tutorial/numeral-systems-decimal-binary-hexadecimal-and-octal/][参考]]
 1. 常用的进制为：十进制、二进制、十六进制； *内存地址* 通常以 十六进制 输出
    - 二进制   :: 逢  2 进 1
    - 八进制   :: 逢  8 进 1；八进制字面值前需要加 0

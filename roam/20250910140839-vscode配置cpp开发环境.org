@@ -2,30 +2,43 @@
 :ID:       717096c9-1ecb-480e-b4a0-93461bd2f722
 :END:
 #+title: vscode配置cpp开发环境
-#+filetags: vscode cpp
+#+filetags: vscode
 
-* vscode配置cpp开发环境（图文） :ATTACH:
+* vscode配置cmake项目开发环境 :ATTACH:
+:PROPERTIES:
+:ID:       95c2b890-2fd6-4188-aaa1-10fb10c93c59
+:END:
+1. 下载插件
+   [[attachment:_20251115_204242screenshot.png]]
+2. 编写 =CMakeLists.txt= ，点击底部三角形
+   [[attachment:_20251128_160417screenshot.png]]
+3. =Ctrl + Shift + p= 打开面板，配置头文件路径，用于 *智能感知*
+   [[attachment:_20251115_204345screenshot.png]]
+4. [可能需要] =重启 vscode= ，智能感知生效
+
+
+* vscode配置cpp普通开发环境（图文） :ATTACH:
 :PROPERTIES:
 :ID:       c08307a6-6dbb-42b4-8a59-947847aa780a
 :END:
+*关键配置文件介绍*
+| 文件                    | 作用                              |
+|-------------------------+-----------------------------------|
+| tasks.json              | 自动化构建（编译+链接）、运行代码 |
+| launch.json             | debug                             |
+| c_cpp_properties.json   | 智能感知                          |
+| settings.json（工作区） | 编辑器选项                        |
+
 1. 下载插件
    [[attachment:_20251010_162311screenshot.png]]
 
-2. 关键配置文件介绍
-   | 文件                    | 作用                              |
-   |-------------------------+-----------------------------------|
-   | tasks.json              | 自动化构建（编译+链接）、运行代码 |
-   | launch.json             | debug                             |
-   | c_cpp_properties.json   | 智能感知                          |
-   | settings.json（工作区） | 编辑器选项                        |
-
-3. 配置 *智能感知* （c_cpp_properties.json）： =Ctrl + Shift + p= 打开面板，选择
+2. 配置 *智能感知* （c_cpp_properties.json）： =Ctrl + Shift + p= 打开面板，选择
    [[attachment:_20251010_162803screenshot.png]]
    输入头文件路径（编译器路径、C标准、C++标准 按需选择）
    [[attachment:_20251010_172402screenshot.png]]
 
-4. 配置 *自动化构建运行任务* （tasks.json）：右上角三角形选择 =运行 C/C++ 文件= 生成 tasks.json，基于生成内容修改
-   #+begin_example json
+3. 配置 *自动化构建运行任务* （tasks.json）：右上角三角形选择 =运行 C/C++ 文件= 生成 tasks.json，基于生成内容修改
+#+begin_example json
 {
     "tasks": [
         {
@@ -62,12 +75,12 @@
     ],
     "version": "2.0.0"
 }
-   #+end_example
+#+end_example
 
-5. 配置 *debug* （launch.json）：创建 launch.json
+4. 配置 *debug* （launch.json）：创建 launch.json
    [[attachment:_20251010_164114screenshot.png]]
    粘贴以下内容（各字段含义见下文）
-   #+begin_example json
+#+begin_example json
 {
     "version": "0.2.0",
     "configurations": [
@@ -94,17 +107,14 @@
         }
     ]
 }
-   #+end_example
+#+end_example
    右上角三角形选择 =调试 C/C++ 文件=
 
-6. 配置 *编辑器选项* （setting.json）：创建 setting.json
+5. 配置 *编辑器选项* （setting.json）：创建 setting.json
    [[attachment:_20251010_165552screenshot.png]]
 
 
-
-
-
-* vscode配置cpp开发环境（windows版）[[https://zhuanlan.zhihu.com/p/401188789][知乎]]
+* vscode配置cpp普通开发环境（windows版）[[https://zhuanlan.zhihu.com/p/401188789][知乎]]
 ** windows开发环境配置
 *对比*
 - mingw：基础的cpp开发环境

@@ -4,174 +4,120 @@
 #+title: 项目
 #+filetags: interview
 
-* 基于C++11重构百万并发Reactor服务器
-1. 主从reactor
-
-2. 整个系统中上层注册回调函数给下层（上层 -> 下层），下层根据事件的不同而触发不同的回调（下层 -> 上层），这就好似上下层之间通信，事件的来源是 epoll；当事件触发时，从下层到上层 层层回调
-   #+begin_comment 示例
-   上层：EchoServer
-   下层：TcpServer
-   再下层：....
-   #+end_comment
-
-3. 主线程对应 主EventLoop，主线程的主EventLoop与Acceptor绑定，负责监听和接收新连接
-   其他IO线程一对一 从EventLoop，每个从EventLoop对应几个Connection
-   EchoServer中线程池里都是 WORK线程
-   #+begin_example cpp
-   // 每个Connection根据内部的客户端socket的fd通过哈希函数打到不同的从事件循环上，因此多个Connection对应到一个EventLoop
-   spConnection conn(new Connection(subloops_[clientsock->fd()%threadnum_].get(),std::move(clientsock)));
-   #+end_example
-
-EchoServer 中的线程池是 工作线程，该线程池中的 任务队列，处理 业务任务
-
-** 问答
-*** YES 介绍下你的项目
-- 项目介绍           :: 这个一个基于 reactor模型 实现的 高并发TCP服务器框架（在这个TCP服务器框架上封装了 EchoServer），one thread one loop，具有 事件驱动、可扩展性高、线程安全 等特点；使用 =epoll + 非阻塞IO= 达到百万级连接能力
-- 整体架构与线程模型 :: 在TCP层，（主线程）主事件循环绑定Accept，负责监听、接受新连接；（其他线程）从事件循环线程池中的从事件循环绑定 Connection，负责连接的IO；在应用层，（其他线程）有可选的工作线程池负责业务处理（计算密集型任务）；上下层之间通信方式 上层向下层注册回调函数，下层根据触发事件类型的同步调用不同回调函数
-
-*** YES 从 accept 新连接到连接读写、消息处理、再到回包的完整链路描述，包括涉及的对象和回调绑定位置
-- 新连接： *「主线程」* Acceptor::newconnection()接受连接，构造客户端socket，回调TcpServer::newconnection()，在从EventLoop中选择一个，并创建Connection，Connection内部有客户端socket和clientchannel并注册读写/错误/关闭回调，后续Channel::handleevent()触发对应回调
-- 消息处理/回包： *「IO线程A」* clientchannel触发读事件，回调Connection::onmessage()，Connection::onmessage()读取数据到自己的缓冲区，回调TcpServer::onmessage()，TcpServer::onmessage()回调上层EchoServer::HandleMessage()，EchoServer::HandleMessage()中将 =任务std::bind(&EchoServer::OnMessage,this,conn,message)= 放入工作线程池的任务队列， *「WORK线程A」* 调用任务EchoServer::OnMessage，EchoServer::OnMessage调用Connection::send()发送响应，Connection::send()中判断出当前执行该函数的线程是「WORK线程A」，于是通过EventLoop::queueinloop将任务放入conn对应的EventLoop::taskqueue中，EventLoop::queueinloop内通过eventfd唤醒「IO线程A」， *「IO线程A」* 处理taskqueue
-
-*** YES 为什么要用 eventfd 唤醒而不使用其他手段？
-- 简单只需1个fd，与epoll无缝集成
-  pipe                  ：需要2个fd
-  pthread条件变量/信号量：不能纳入epoll的等待集合
-  signal                ：全局性强
-  timerfd               ：专门做计时器事件，不适合作为跨线程“任务到达”的通知
-  C++11互斥锁/条件变量  ：与epoll集成不好，会造成双重等待（既等条件变量，又等epoll_wait）
-
-*** YES Connection在回调过程中为什么要用shared_from_this()，用this行吗，或者 new 一个Connection的共享指针？
-# Connection::onmessagecallback_(shared_from_this(),message);
-- 用 this 不行，因为 this 不能增加 Connection 的引用计数，可能在回调过程中 Connection 被意外释放；new一个Connection的共享指针也不行，因为这样创建的共享指针引用计数与正在管理Connection的共享指针引用计数不同步（创建了新的shared_ptr），使用shared_from_this() 就能共享正在管理Connection的共享指针的引用计数
-
-*** YES 如何做消息拆包？Buffer::pickmessage() 三种分隔方式各自适用什么场景？
-- 消息 = 消息头(固定4字节) + 消息体；读取消息头获取长度信息，根据长度信息读取消息体
-- 0：无分割符，适合定长/持续流（eg：音视频）
-  1：4字节消息头（默认），处理粘包问题
-  2：\r\n\r\n分隔，处理HTTP
-
-*** EventLoop::stop_ 是原子变量，停止时如何保证不会丢任务？如何优雅退出所有 subloops_ 与工作线程？
-- EventLoop::stop() 会将 stop_ 设置为 true，然后通过 eventfd 通知 EventLoop 将任务队列中的任务全部处理，同时 stop_=true 后，EventLoop::run() 中 while循环停止，也就是 事件循环停止了
-- 设计了一个 ThreadPool::stop()，将 原子变量 stop_设置为true，然后唤醒全部阻塞的线程，等待它们执行完成；被唤醒的线程发现 stop_=true且任务队列为空就直接return，否则先将任务做完，下次while循环退出
-  *补充* ：不直接在析构函数中设计这个逻辑是为了增加灵活性，用户可以直接调用 stop() 来手动停止线程池；ThreadPool::stop() 中一开始设计 if(stop_) return; 是因为join过的线程不能再join
-  #+begin_example cpp
-  void ThreadPool::stop()
-  {
-      if (stop_) return;       // 被join过的线程不能再join的，否则会调用terminate；eg：第一次stop()，对所有线程join了；第二次 stop 若没有这行，则再次join，则程序终止
-      stop_ = true;
-      condition_.notify_all();  // 唤醒全部的线程。
-      // 等待全部线程执行完任务后退出。
-      for (std::thread &th : threads_)
-          th.join();
-  }
-  #+end_example
-
-*** YES 为什么 EventLoop 里集成了 timerfd_？EventLoop::conns_ 和 TcpServer::conns_ 都维护了连接，为什么要两份？
-- timerfd是计时器，可以打破程序执行的流程，每隔一段事件去做某件事，这里通过 timerfd 来定期检查 Connection 是否超时，将超时Connection从EventLoop中删除，并从TcpServer中删除
-  #+begin_comment
-  *具体来说* ：EventLoop中继承 timerfd、timerchannel 周期性触发 handletimer()，handletimer()设置重新计时并遍历所有 Connection，若超时，则从EventLoop::conns中删除，回调TcpServer::removeconn，TcpServer::removeconn将Connection从TcpServer::conns中删除
-  #+end_comment
-
-- TcpServer::conns 管理全局的Connection（eg：统一关闭），EventLoop::conns管理局部Connection（eg：空闲连接检测）
-  #+begin_comment
-  假设将空闲连接检测交给TcpServer::conns，则TcpServer性能不好，因为需要定期完整检查全部Connection，而TcpServer的职责主要是监听和接受新连接
-  #+end_comment
-
-*** YES 有无考虑进程级信号处理（如 SIGINT）触发所有 loops、ThreadPool 的优雅退出？
-- 有进程级的信号处理，捕获到 SIGINT、SIGTERM 时，调用自定义的Stop函数
-  #+begin_example cpp
-  signal(SIGTERM,Stop);    // 信号15，系统kill或killall命令默认发送的信号。
-  signal(SIGINT,Stop);     // 信号2，按Ctrl+C发送的信号。
-
-  // Stop函数中
-  echoserver->Stop();
-  delete echoserver;
-  #+end_example
-
-*** YES 实现主从 Reactor 吗？mainloop_ 和 subloops_ 的职责边界是什么？新连接如何在多个 EventLoop 之间分配（策略/理由），支持连接迁移吗？
-- 主事件循环负责 监听/接受 新连接（Acceptor绑定在主事件循环），从事件循环负责Connection的IO事件、超时管理（事件循环内有个定时器，每隔一段时间检查Connection）
-- 使用 哈希方法，简单且无锁（eg：轮询按顺序分配连接，因此可能需要锁）
-
-*** YES 为什么 Socket、Channel 在不同地方用 unique_ptr，而连接放在 std::map<int, spConnection>？
-- socket表示网络连接，channel表示事件，每个 Connection 独占各自的socket、channel，因此使用 unique_ptr；而 Connection 存在于 TcpServer 和 EventLoop 中，且在一些回调函数中需要传递 Connection，因此使用 shared_ptr，以便在回调链路中延续生命周期
-
-*** YES ThreadPool 主要用于 IO 线程还是工作线程？threadtype_ 的意图是什么？
-- 都有，用 threadtype_ 标识线程池类型
-
-*** YES 用什么方式压测（客户端、QPS、RT、连接数、CPU/内存）？
-- 虚拟机：4核CPU、2g内存 Ubuntu系统
-  sh脚本中在后台起了30个客户端，每个客户端发送10万个请求，计算下来大概1秒10万
-- autodl重庆A区：32核CPU 120g内存 Ubuntu系统
-  sh脚本中在后台起了30个客户端，每个客户端发送100万个请求，关闭可选的工作线程池，IO线程数改为30（也就是整个程序31个线程），计算下来QPS=100万
-  + top命令看CPU和内存
-  + QPS=请求/每秒，QPS是每秒查询率
-
-*** Channel::useet() 配合 EPOLLET 时，如何避免丢事件、确保把缓冲区读到 EAGAIN？写事件何时启用/关闭？
-
-*** 连接关闭/错误的路径是什么？如何避免重复关闭？如何确保回调顺序和资源回收正确？
-
-*** EventLoop::setepolltimeoutcallback() 和 settimercallback() 的典型用途？二者在你业务中分别做什么？
-
-*** 真正上到百万连接需要哪些内核与系统调优？你准备调整哪些参数、为何？
-
-*** 零拷贝与大报文：发送大文件/大报文时是否考虑 sendfile/splice/mmap/writev？当前 Buffer 设计的瓶颈在哪里？
-
-*** 如何处理对端半关闭（read 返回 0）与 RST？多次触发关闭路径会怎样？
-
-
 * 全栈聊天项目
-** 服务端
+** 登录 :业务:
+首先用户在登录聊天框中输入账号密码，点击登录，就由 QT 的 HTTP 管理模块，将消息打包成 JSON 格式发送到后端的网关服务器。后端的网关服务器里注册了一些回调函数，然后网关服务器收到这个 JSON 之后就去调用对应的登录回调函数。在登录回调函数里会先去找状态服务器，然后状态服务器就去查询用户ID对应的聊天服务器，然后返回聊天服务器的 IP、端口以及一个用于临时身份验证的 token。客户端收到后，使用 它的TCP管理模块去连接聊天服务器，并用 token 进行临时身份验证。验证成功时聊天服务器去 MySQL 里查询用户的基本信息、好友申请列表以及好友列表，并返回给 客户端。客户端用返回的数据更新它的user管理模块（user管理模块里存的就是用户相关的一些信息），最后用user管理模块里面的信息更新界面。
+** 验证码 :业务:
+首先用户在注册界面输入邮箱，点击获取验证码，客户端检查邮箱格式，若正确，就通过 HTTP 管理模块，将用户输入打包成 JSON 格式发送到后端的网关服务器。网关服务器调用验证码回调函数找到验证服务器，验证服务器通过 UUID 生成一个随机的四位数，并记录到 Redis 中设置过期时间，然后将这个四位数发送到用户邮箱。
+** 注册 :业务:
+首先用户在注册界面输入用户名、密码、重复密码、邮箱、验证码，客户端进行简单的检验（字段是否为空，邮箱格式是否正确），然后通过 HTTP 管理模块将这些数据打包成 JSON 格式发送到后端的网关服务器，网关服务器调用注册回调函数，检查验证码，若和 Redis 当中的验证码一致，则将这条记录插入到 MySQL，并返回给客户端注册成功的信息。
+** 重置密码 :业务:
+首先用户在重置密码界面输入邮箱，点击获取验证码，得到并输入校验码以及新密码后，点击重置密码，这些数据就会被打包成一个 JSON， 通过 HTTP 管理模块发送到后端的网关服务器。网关服务器调用重置密码回调函数：检查一下验证码是否正确，以及这个邮箱是否存在，没问题之后就更新密码，并且返回密码重置成功给客户端。
+** 好友搜索 :业务:
+首先用户在好友搜索框里输入好友名称，这些数据被打包成一个 JSON，通过 TCP 管理模块发送到聊天服务器，聊天服务器调用好友搜索回调函数。先查 Redis， Redis 没有就查 MySQL， MySQL 查到后，回写 Redis，并返回给客户端。客户端收到后，弹出查找成功的窗口。
+** 添加好友流程 :业务:
+申请好友方A，在搜索框输入 被申请方B的名字，点击搜索，搜索成功后点击添加好友按钮，弹出添加好友会话框，填入备注之类的信息，点确定，相关信息被打包成一个 JSON， 通过 TCP 管理模块发送到聊天服务器，聊天服务器调用对应的回调函数：更新数据库的好友申请表（记录为申请方id，被申请方id，状态），记录中状态为 0 代表还没有添加好友；接着通知 B，首先在 Redis 里查 B 和他所在服务器的映射关系，如果不存在，说明 B 不在线，直接返回。如果存在，就能通过 B 的 uid 找到他所在的服务器。如果和我们是同一个服务器，就直接通过 B 的 uid 找到他所在的会话，然后回包给他的客户端。如果不在同一个服务器，那就通过 gRPC 将消息转发给 B 所在的聊天服务器，再找到 B 所在的会话，回包给客户端。此时 B 的好友申请列表显示好友申请请求。B 点击添加，在好友验证对话框里填写备注相关的信息，点击确定，相关信息就会打包成一个 JSON 通过 TCP 模块发送到聊天服务器，聊天服务器调用对应的回调函数：更新数据库的好友申请表、好友表，接着通知 A ，先定位 A 的位置，Redis 里看有没有 A 的 uid 和他所在的聊天服务器的映射，若没有，代表A不在线，直接返回。若有，判断A是在同一个聊天服务器，还是在不同聊天服务器。如果在同一个聊天服务器，就直接通过A的 uid 找到他所绑定的会话，然后发送消息给A的客户端。如果不在同一个服务器就通过 gRPC 将消息转发到A所在的聊天服务器，再通过 A 的 uid 找到对应的会话，将消息返回给他所在的客户端，A客户端里的这个 user管理模块 就会被更新，界面中更新 A 的好友列表。
+** MVC架构 :客户端:
+M：模型层，用于存储数据和提供数据访问。对应代码中的 user管理类
+V：视图层，用户可以看到的UI界面。对应代码中的 界面类
+C：控制层，业务逻辑控制。对应代码中的 http/tcp管理类
+具体流程：视图层（界面类）用户进行某些操作，控制层（http/tcp管理类）与后端交互获取数据更新 模型层（user管理类），视图层 再根据 模型层 更新界面
+** 动态加载聊天列表 :客户端:
+在列表滚动区域捕获鼠标滚轮事件，滚动到底部时发送一个加载聊天用户的信号，此时UI界面加载gif动画，后台加载好友列表，加载完毕后更新UI界面
+#+begin_example cpp
+bool ChatUserList::eventFilter(QObject *watched, QEvent *event)
+void ChatDialog::slot_loading_chat_user() // 加载gif动画（LoadingDlg，模态形式），后台ChatDialog::addChatUserList() -> UserMgr::GetChatListPerPage() -> 更新UI界面
+#+end_example
+
+** redis在项目中的使用场景/用到的redis函数？ :redis:
+String的Set/Get：临时数据（登录token、验证码）、热点数据（用户信息）、共享数据（用户服务器映射）
+Hash的HSet     ：负载均衡（连接数最小的聊天服务器）
+# RedisMgr::GetInstance()->HSet(LOGIN_COUNT, server_name, "0"); 3个参数分别为：哈希表的键、字段名、字段值
+
+1. 用户登录token（登录）               #define USERTOKENPREFIX  "utoken_"
+2. 验证码（注册、重置密码）            let code_prefix = "code_";
+3. 连接数最小的聊天服务器（负载均衡）  #define LOGIN_COUNT  "logincount"
+4. 用户所在服务器（查用户在哪个服务器）#define USERIPPREFIX  "uip_"
+5. 用户信息（用户名）                  #define NAME_INFO  "nameinfo_"
+           （id）                      #define USER_BASE_INFO "ubaseinfo_"
+
+** mysql存储哪些数据？ :mysql:
+- user表         :: 用户信息表
+#+begin_comment
+uid: 用户唯一标识符
+name: 用户名
+email: 邮箱地址
+pwd: 密码
+nick: 昵称
+desc: 个人描述
+sex: 性别
+icon: 头像路径
+#+end_comment
+
+- friend表       :: 好友关系表（两个用户成为好友时，数据库中插入两条记录）
+#+begin_comment
+self_id  : 用户自己的ID
+friend_id: 好友的ID
+back     : 备注名称
+#+end_comment
+
+- friend_apply表 :: 好友申请表
+#+begin_comment
+from_uid: 申请人ID
+to_uid  : 被申请人ID
+status  : 申请状态（0=待处理，1=已同意）
+#+end_comment
+
+** mysql表中哪些字段设置为索引，为什么？ :mysql:
+- user表 ::
+  uid  ：唯一索引 -> uid搜索用户查询mysql
+  email：唯一索引 -> 用户名搜索用户查询mysql
+  name ：普通索引 -> 邮箱登录，登录验证查询mysql
+- friend表 ::
+  self_friend(self_id, friend_id)：联合唯一索引，防止重复添加好友
+- friend_apply表 ::
+  from_to_uid(from_uid, to_uid)： 联合唯一索引，防止重复申请好友
+** 项目中微服务的拆分、职责边界怎么划分？ :服务端:
+*网关服务器* ：外部请求的统一入口，根据客户端请求业务不同，协调其他服务共同完成。可以进行 登录、注册、重置密码 等业务
+*状态服务器* ：用于查询聊天服务器相关的信息：
+             1. 聊天服务器ip、端口、token
+             2. 聊天服务器与用户映射
+             3. 聊天服务器连接数
+*验证服务器* ：用于发送验证码到用户邮箱
+*聊天服务器* ：用户客户端登录后所在的服务器。可以进行 好友添加、发送消息 等业务
+
+** 怎么处理粘包/怎么设计的buffer？ :服务端:
+tlv消息格式： =消息 = 4字节消息头（消息id+消息长度） + 消息体=
+1. 用一个 C风格数组（char数组）接收异步读取到的数据
+2. 先固定读取4字节，提取出里面的 消息id、消息长度 并记录到 recv_node结构体；再根据消息长度读取消息体，记录到 recv_node结构体
+3. 将recv_node结构体、CSession放到 logic_node结构体（包含CSession意味着后续可以在此CSession中发送消息）交给LogicSystem处理
+
+** tmp
+*** 服务端
 内存中的状态管理类
 1. ApplyInfo：好友申请信息（包含申请人信息和申请状态），用于好友申请列表展示
 2. UserInfo ：记录用户完整信息
 3. UserMgr  ：用户会话管理，维护用户ID到会话的映射关系
    # 没有存储好友列表的类，只有在用户登录时，从mysql中查寻好友存储在 std::vector<std::shared_ptr<UserInfo>>，返回给客户端
 
-*** 登录的具体流程
-- 网关服务端注册了登录回调函数（LogicSystem），客户端发送登录的HTTP请求给网关服务器，触发 登录回调函数，在 登录回调函数 中会去mysql中验证密码，然后通过grpc去访问 状态服务器，状态服务器查询redis，返回连接数最小的聊天服务器的 ip、port、token（token用于临时的身份验证）给客户端，并在redis中存储token，客户端连接聊天服务器，聊天服务器查询redis验证token，获取用户信息（UserInfo存在内存中；流程：先redis再mysql，将查到的信息存在UserInfo和redis中）、好友列表、添加好友列表（这些信息没有存到内存、redis，因此后续查询时通过mysql） 打包成json发送给客户端，更新redis中当前聊天服务器的连接数，将用户ID与当前聊天服务器绑定（记录到redis中），方便未来跨服通信，将用户ID与会话绑定（更新CSession、UserMgr），方便未来踢人操作
-
-*** 注册的具体流程？如何实现发送验证码功能？
-- 客户端发送注册请求到网关服务器，网关服务器调用注册回调函数，回调函数中验证密码和确认密码是否相同，再从redis中获取验证码，校验客户端验证码，调用mysql创建新用户，返回一个响应给客户端
-- 客户端发送验证码请求到网关服务器，网关服务器调用获取验证码回调函数，回调函数通过grpc找到验证服务器，验证服务器使用uuid生成4位随机数作为验证码，存放在redis中设置过期时间，并发送邮件到用户邮箱，用户在客户端填写注册信息发送到网关服务器后，网关服务器查询redis验证码，校验客户端验证码
-
-*** 登录和聊天分别用什么协议？两个客户端之间如何实现聊天功能？
+**** 登录和聊天分别用什么协议？两个客户端之间如何实现聊天功能？
 - 登录使用 HTTP，聊天使用 TCP 并在应用层进行了拆包处理，聊天服务器之间消息转发使用 gPRC，
 - 客户端在聊天服务器的会话中发送消息，消息被交到逻辑系统的消息队列里，逻辑系统后台起了一个线程专门处理消息队列里的内容，根据消息id找到文本聊天回调函数，在这个函数中先查询redis，找到我们要发送消息的目标的聊天服务器ip地址，若两个客户端在同一个聊天服务器，就直接通过内存里的UserMgr找到对应的会话发送消息，若两个客户端在不同聊天服务器，就通过grpc发送到另一个聊天服务器
 
-*** 登录用的http的哪个方法，为什么用post，不用get？
+**** 登录用的http的哪个方法，为什么用post，不用get？
 - POST；POST的语义是提交数据，且数据可以是JSON格式的数据且在请求体中，相比与get语义上的使用更准确，传输更安全
 
-*** redis在项目中的作用/应用场景？
-- 作为共享缓存，使得所有服务器都能来查询信息
-  用于 *用户登录管理* ：用户登录时会验证redis中的token
-  1. 用户登录token（用于验证）            #define USERTOKENPREFIX  "utoken_"
-  用于 *用户注册管理* ：验证用户注册时会查询redis
-  2. 验证码                               let code_prefix = "code_";
-  用于实现 *负载均衡* ：维护每个ChatServer的登录连接数
-  3. 每个聊天服务器上连接数（用户登录数） #define LOGIN_COUNT  "logincount"
-  用于 *消息路由* ：跨服务器发送消息时，通过redis查询用户所在服务器
-  4. 用户所在服务器                       #define USERIPPREFIX  "uip_"
-  用于 *减少数据库压力* ：缓存用户基础信息，减少对mysql查询的压力
-  5. 用户信息（通过用户名查）             #define NAME_INFO  "nameinfo_"
-  6. 用户信息（通过id查）                 #define USER_BASE_INFO "ubaseinfo_"
-
-*** 在项目中用到的redis函数？
-- HSet    ：服务器负载均衡（管理ChatServer的登录用户数）
-  # 用HSet是为了g将所有服务器登录计数存储在一个redis哈希表中 RedisMgr::GetInstance()->HSet(LOGIN_COUNT, server_name, "0"); 3个参数分别为：哈希表的键、字段名、字段值
-  Get/Set ：登录token、验证码、用户信息、服务器用户映射 获取/记录
-
-*** 为什么用异步不用同步？
+**** 为什么用异步不用同步？
 - IO用同步会阻塞，而异步使用事件驱动机制，无需等待IO就能去做其他的事，比如处理其他连接，这样就能做到一个线程处理大量的并发连接，而同步只能一个连接处理完再处理下一个
 
-*** 什么是asio，具体可以实现哪些功能？为什么要选择项目中的这个网络库（asio），以及这些技术？
+**** 什么是asio，具体可以实现哪些功能？为什么要选择项目中的这个网络库（asio），以及这些技术？
 - C++中异步IO库，通过异步操作进行高效的网络通信，比如 连接建立，消息收发
 - 聊天系统需要同时处理大量的用户连接，用户多消息收发也多，使用同步效率太低，因此考虑异步，而C++中有名的异步IO库就是[[id:c590482b-2e5a-4617-822b-74a9dd015ae5][asio]]
 
-*** asio的原理是什么？ [[id:c590482b-2e5a-4617-822b-74a9dd015ae5][asio]]
+**** asio的原理是什么？ [[id:c590482b-2e5a-4617-822b-74a9dd015ae5][asio]]
 - asio中主要是异步操作，每次调用异步操作时注册一个完成处理函数，后续调用io_context::run()时，内部会运行一个事件循环，处理内部的任务队列中的任务（调用异步操作时注册的完成处理函数），直到任务队列为空或io_context停止
 
-*** redis连接池、mysql连接池、io线程池（AsioIOServicePool）、grpc连接池 怎么设计的？
+**** redis连接池、mysql连接池、io线程池（AsioIOServicePool）、grpc连接池 怎么设计的？
 - redis连接池：
   创建连接：host、port、pwd
   存放连接：queue（存放redis连接，实现顺序存取）、poolSize
@@ -201,15 +147,7 @@ EchoServer 中的线程池是 工作线程，该线程池中的 任务队列，�
   池子关闭：b_stop
   「方法」：创建池子、关闭池子、取出连接、归还连接
 
-*** 具体的添加好友的业务怎么实现的？主动添加方的消息推送是怎么实现的（因为被添加方同意时，主动添加方可能不在线）
-- 客户端发送添加好友请求，聊天服务器解析JSON，更新mysql（存储添加好友记录，此时还未添加，friend_apply表status=0），若在当前服务器则找到对应会话，通过该会话发送消息给客户端，若不在当前服务器，则通过grpc发送消息到用户所在的服务器的会话（对应关系：用户id -> grpc连接池、服务器、会话），通过该会话发送消息给客户端；
-  当被添加客户端点击同意请求时，发送同意添加好友请求，更新mysql（更新添加好友记录，friend_apply表status=1；存储friend表），若在当前服务器则找到对应会话通过该会话发送消息给客户端，若不在当前服务器，则通过grpc发送消息到用户所在的服务器的会话，通过该会话发送消息给客户端
-- 若对方不在线，存储添加好友记录到mysql中的friend_apply表，被添加用户下次登录时，会从mysql中加载 好友申请列表
-
-*** 有没有了解消息队列
-- 猜测类似 进程间通信方式-消息队列，用于将发送方和接收方解耦（发送方只需把消息放到队列就能返回，无需等待接收方）、队列缓冲能力平衡双方速率差异、支持多线程并发操作，在项目中HTTPConnection/CSession负责IO，LogicSystem负责业务处理，IO类将消息放到 LogicSystem的队列中，LogicSystem后台起一个线程专门处理队列中的任务
-
-*** 为什么需要网关服务，没有行不行？
+**** 为什么需要网关服务，没有行不行？
 - 没有网关服务，则客户端复杂性增加，客户端就需要与多个后端服务通信
   #+begin_comment
   有网关的情况：
@@ -220,66 +158,30 @@ EchoServer 中的线程池是 工作线程，该线程池中的 任务队列，�
   Web客户端 → 其他服务...
   #+end_comment
 
-*** 为什么要把登录和聊天拆分成不同的服务器？
+**** 为什么要把登录和聊天拆分成不同的服务器？
 - 解耦登录和聊天功能：
   1. 登录使用HTTP协议，聊天使用基于TCP的自定义协议，耦合在一起协议处理的复杂性就高了
   2. 用户量上来了，聊天服务器就需要扩展了，耦合在一起物理机器的性能可能不够用
   3. 某个聊天服务器故障，不会影响用户登录，可以将用户分配到另一个正常的聊天服务器
-*** 每个聊天服务器都是一个单独的ip，如果一个服务器挂了、那么这个服务器上的客户端都会受到影响，那如何做到无损切换服务器？
+
+**** 每个聊天服务器都是一个单独的ip，如果一个服务器挂了、那么这个服务器上的客户端都会受到影响，那如何做到无损切换服务器？
 - [[id:2e8203cb-5616-41c8-b2c4-a46b57eaa9b9][图:一致性哈希扩容和缩容]]
 
-*** 项目中mysql主要存储哪些数据？
-- user表         :: 用户信息表
-  #+begin_comment
-  uid: 用户唯一标识符
-  name: 用户名
-  email: 邮箱地址
-  pwd: 密码
-  nick: 昵称
-  desc: 个人描述
-  sex: 性别
-  icon: 头像路径
-  #+end_comment
-
-- friend表       :: 好友关系表 -> 当两个用户成为好友时，数据库中插入两条记录
-  #+begin_comment
-  self_id  : 用户自己的ID
-  friend_id: 好友的ID
-  back     : 备注名称
-  #+end_comment
-
-- friend_apply表 :: 好友申请表
-  #+begin_comment
-  from_uid: 申请人ID
-  to_uid  : 被申请人ID
-  status  : 申请状态（0=待处理，1=已同意）
-  #+end_comment
-
-*** mysql表中哪些字段设置为索引，为什么？
-- user表 ::
-  uid  ：唯一索引 -> uid搜索用户查询mysql
-  email：唯一索引 -> 用户名搜索用户查询mysql
-  name ：普通索引 -> 邮箱登录，登录验证查询mysql
-- friend表 ::
-  self_friend(self_id, friend_id)：联合唯一索引，防止重复添加好友
-- friend_apply表 ::
-  from_to_uid(from_uid, to_uid)： 联合唯一索引，防止重复申请好友
-
-*** [[id:a5c426e4-365b-447d-89f3-eddc9c517a01][grpc]]用的什么协议？用的同步api还是异步api？protobuf的作用？
+**** [[id:a5c426e4-365b-447d-89f3-eddc9c517a01][grpc]]用的什么协议？用的同步api还是异步api？protobuf的作用？
 - [[id:0b3fad26-6096-455d-a8af-79522c5113f3][HTTP/2]]、[[id:13f67abf-4087-4d20-87d7-ed11e5b99edc][Protocol Buffers]]
 - 同步
 - 用于序列化结构化的数据，体积更小、解析速度更快
 
-*** grpc如何实现断线重连
+**** grpc如何实现断线重连
 - 客户端Stub会持续监控底层连接，若连接断开，会尝试自动重连。重连采用 指数退避算法
 
-*** grpc在项目中解决的什么问题？
+**** grpc在项目中解决的什么问题？
 - grpc用于服务之间的通信；主要用来解决
   1. 统一的通信方法（grpc）
   2. 跨聊天服务器通信（两个聊天服务器之间通信）
   3. 负载均衡和聊天服务发现（网关服务器通过状态服务器发现连接数最小的聊天服务器）
 
-*** TODO 怎么封装的http和tcp？
+**** TODO 怎么封装的http和tcp？
 - 封装HTTP：HttpConnection类
   *成员* -> 填充HTTP请求响应报文使用beast的 beast::http::request 、beast::http::response ；网络传输使用boost::ip::tcp::socket；存储从socket异步读到（beast::http::async_read） 的原始字节 beast::flat_buffer；60秒超时的定时器；存储get参数的unordered_map；解析后的url
   *函数* -> 读取请求的函数、解析报文的函数（判断GET/POST，交给LogicSystem处理）、发送响应的函数、超时函数
@@ -288,178 +190,29 @@ EchoServer 中的线程池是 工作线程，该线程池中的 任务队列，�
   *成员* -> 会话id（标识会话），用户id（标识会话所属用户）；会话关闭标识（标识会话是否已关闭）；网络传输socket；数据缓冲区（char data[]）；发送消息队列（实现消息的有序发送）；发送队列的互斥锁；_recv_msg_node（消息体节点），_recv_head_node（消息头节点），b_head_parse（标识当前是否正在解析消息头）
   *函数* -> 绑定/查询用户和会话的函数、
 
-*** 项目中消息格式是什么样的？
-tlv， =消息 = 4字节消息头（消息id+消息长度） + 消息体=
-*** TODO CSession中是怎么处理粘包的？
 
-*** [ ] 项目中微服务的拆分、职责边界怎么划分
-*** [ ] 聊天服务器如何实现的负载均衡、当有大量请求到来时，如何实现连接的均匀分布？
-*** [ ] 聊天过程中的数据如何产生，如何传递，如何存储
-*** [ ] 存储聊天数据的表如何设计，如何建立索引
-*** [ ] 如果离线消息过大，需要等所有数据发送完后再删除吗，如果发送过程中服务断掉，那下一次要重复发送吗
 
-*** [ ] 大量用户连接时，负载的处理和断连的处理
-*** [ ] 客户端请求到达服务端的通信链路
-*** [ ] 数据库中用户密码的加密存储
-*** [ ] 高并发场景下单个连接数不足的问题具体讲讲
-*** [ ] 讲项目做的好的一个点？项目还有什么不足和改进点？
+**** [ ] 聊天服务器如何实现的负载均衡、当有大量请求到来时，如何实现连接的均匀分布？
+**** [ ] 聊天过程中的数据如何产生，如何传递，如何存储
+**** [ ] 如果离线消息过大，需要等所有数据发送完后再删除吗，如果发送过程中服务断掉，那下一次要重复发送吗
+**** [ ] 大量用户连接时，负载的处理和断连的处理
+**** [ ] 客户端请求到达服务端的通信链路
+**** [ ] 数据库中用户密码的加密存储
+**** [ ] 高并发场景下单个连接数不足的问题具体讲讲
+**** [ ] 讲项目做的好的一个点？项目还有什么不足和改进点？
+**** [ ] 多线程并发修改全局变量会有什么问题，如何解决? （除了加锁还有什么方法?)
+**** [ ] 如何存储大量的聊天信息，包括音频视频以及各种大文件
+**** TODO 如何获得服务器性能的？（测试）
+**** [ ] 如何解决大量tcp连接的性能问题？如何用户登陆后长时间没有请求（心跳机制），如何又突然要发消息了，需要重新登录吗？
+**** [ ] redis如果遇到内存快满了，如何处理
 
-*** [ ] 多线程并发修改全局变量会有什么问题，如何解决? （除了加锁还有什么方法?)
-*** [ ] 如何存储大量的聊天信息，包括音频视频以及各种大文件
-*** 服务器如何确定用户连接到哪个聊天服务器？
-redis中存储了用户id和聊天服务器的绑定信息
-*** TODO 如何获得服务器性能的？（测试）
-*** [ ] 如何解决大量tcp连接的性能问题？如何用户登陆后长时间没有请求（心跳机制），如何又突然要发消息了，需要重新登录吗？
-*** [ ] redis常用的数据结构，redis是单线程还是多线程、为什么单线程他的效率还高？
-*** [ ] redis如果遇到内存快满了，如何处理
+**** [ ] 客户端使用什么接口进行消息发送的？
 
-*** [ ] 客户端使用什么接口进行消息发送的？
-
-*** TODO 连接池怎么设计连接数？当有大量请求时，如何处理连接超时问题？
+**** TODO 连接池怎么设计连接数？当有大量请求时，如何处理连接超时问题？
 - redis、grpc连接池大小为5，mysql根据配置文件动态变化
-*** [ ] 同一账号，在设备上添加的好友，之后在b设备上登陆时，如何同步这个好友信息？
-*** [ ] qt mvc架构
 
-** 客户端
-*** MVC架构？
-模型层：数据管理。项目中对应UserMgr类
-视图层：UI界面。
-控制层：业务逻辑控制。
-
-MVC交互流程：视图层用户操作触发信号，控制层槽函数处理业务逻辑，通过模型层更新数据，并更新视图层
-
-*** 登录流程？
-1. 用户在 LoginDialog 输入帐号密码 并 点击登录按钮后，将用户输入的邮箱密码打包成JSON交给 HttpMgr
-2. HttpMgr 发送 HTTP POST 请求，收到响应后根据响应中 Modules 不同触发不同信号
-3. LoginDialog 解析JSON，调用对应的 handler函数，handler函数 中从 JSON 中取出 服务器ip、port、token，存放在内存中的 ServerInfo，发出 sig_connect_tcp信号
-4. TcpMgr 通过 ServerInfo中的信息 连接服务器，Tcp连接成功后，发送 聊天登录请求（ID_CHAT_LOGIN），携带 uid/token 做验证，回包成功后 切换到 ChatDialog
-
-#+begin_example cpp
-LoginDialog::on_login_btn_clicked() // 将用户输入的邮箱密码，打包成JSON
-HttpMgr::PostHttpReq(QUrl(gate_url_prefix+"/user_login"), json_obj, ReqId::ID_LOGIN_USER,Modules::LOGINMOD) // 发送HTTP POST请求，收到完整响应（reply）后
-HttpMgr::PostHttpReq::connect(reply, &QNetworkReply::finished, [reply, self, req_id, mod](){/**/}) // 读取响应信息，发出信号 sig_http_finish(req_id, res, ErrorCodes::SUCCESS,mod)
-HttpMgr::HttpMgr()::connect(this, &HttpMgr::sig_http_finish, this, &HttpMgr::slot_http_finish);
-HttpMgr::slot_http_finish(ReqId id, QString res, ErrorCodes err, Modules mod) // 根据 Modules 不同触发不同信号，sig_login_mod_finish(id, res, err);
-connect(HttpMgr::GetInstance().get(), &HttpMgr::sig_login_mod_finish, this, &LoginDialog::slot_login_mod_finish);
-LoginDialog::slot_login_mod_finish(ReqId id, QString res, ErrorCodes err) // 解析res为JSON，调用 _handlers[id](jsonDoc.object());
-LoginDialog::initHttpHandlers::_handlers.insert(ReqId::ID_LOGIN_USER, [this](QJsonObject jsonObj){/**/} // 从JSON中取出服务器ip、port、token，存放到内存的 ServerInfo 中，发出信号 sig_connect_tcp(si)
-LoginDialog::LoginDialog()::connect(this, &LoginDialog::sig_connect_tcp, TcpMgr::GetInstance().get(), &TcpMgr::slot_tcp_connect);
-TcpMgr::slot_tcp_connect(ServerInfo si) // 取出 ServerInfo，通过 socket 连接聊天服务器
-TcpMgr::TcpMgr()::connect(&_socket, &QTcpSocket::connected, [&]() {/**/}) // 发出信号 sig_con_success(true);
-LoginDialog::LoginDialog::connect(TcpMgr::GetInstance().get(), &TcpMgr::sig_con_success, this, &LoginDialog::slot_tcp_con_finish);
-LoginDialog::slot_tcp_con_finish(bool bsuccess) // 取出 uid、token 打包成JSON，发出信号 TcpMgr::sig_send_data(ReqId::ID_CHAT_LOGIN, jsonData);
-TcpMgr::TcpMgr()::connect(this, &TcpMgr::sig_send_data, this, &TcpMgr::slot_send_data)
-TcpMgr::slot_send_data(ReqId reqId, QByteArray dataBytes) // 将数据转换为网络字节序，通过 socket发送数据
-TcpMgr::TcpMgr()::connect(&_socket, &QTcpSocket::readyRead, [&]() {/**/}) // 将socket中数据全部读到缓冲区，Q_FOREVER循环 解析消息头部、消息体，调用 handleMsg(ReqId(_message_id),_message_len, messageBody);
-TcpMgr::handleMsg(ReqId id, int len, QByteArray data) // 调用对应的 handler函数
-TcpMgr::initHandlers()::_handlers.insert(ID_CHAT_LOGIN_RSP, [this](ReqId id, int len, QByteArray data){/**/}) // 解析JSON，将用户数据填充到内存中的 UserInfo，再将 UserInfo 填充到 UserMgr 中，并且设置 UserMgr 的 token，若有申请列表、好友列表，则同样添加到 UserMgr 中，发出信号 sig_swich_chatdlg
-MainWindow::MainWindow()::connect(TcpMgr::GetInstance().get(),&TcpMgr::sig_swich_chatdlg, this, &MainWindow::SlotSwitchChat);
-MainWindow::SlotSwitchChat() // 切换当前对话框为 聊天对话框
-#+end_example
-
-*** 发送验证码流程？
-1. 用户在 RegisterDialog 或 ResetDialog 中输入邮箱并点击获取验证码后，将邮箱构造到JSON中
-2. HttpMgr 发送 HTTP POST请求，获取到响应后，slot_reg_mod_finish 或 slot_reset_mod_finish（注册和重置密码业务流程都需要验证码）
-3. RegisterDialog 槽函数解析 JSON，调用对应 handler函数，显示 “验证码已发送到邮箱，注意查收”
-
-#+begin_example cpp
-RegisterDialog::on_get_code_clicked() // 读取用户输入的邮箱，校验格式，构造 JSON，发送获取验证码 HttpMgr::PostHttpReq(QUrl(gate_url_prefix+"/get_varifycode"),json_obj, ReqId::ID_GET_VARIFY_CODE,Modules::REGISTERMOD)
-HttpMgr::PostHttpReq(QUrl url, QJsonObject json, ReqId req_id, Modules mod) // 发送 HTTP POST 请求，等待回包
-connect(reply, &QNetworkReply::finished, [reply, self, req_id, mod](){/**/}) // 读取响应中的数据，发送 sig_http_finish
-HttpMgr::slot_http_finish(ReqId id, QString res, ErrorCodes err, Modules mod) // 根据 Modules 不同，分别发送不同信号，调用不同槽函数，sig_reg_finish
-RegisterDialog::slot_reg_mod_finish(ReqId id, QString res, ErrorCodes err) // 解析 JSON，调用对应 handler函数
-RegisterDialog::initHttpHandlers()::_handlers.insert(ReqId::ID_GET_VARIFY_CODE, [this](QJsonObject jsonObj){}) // RegisterDialog 显示 “验证码已发送到邮箱，注意查收”
-#+end_example
-
-*** 注册流程？
-1. 用户在 RegisterDialog 输入注册信息（包括验证码）点击注册按钮后，触发槽函数 校验用户输入，构造JSON
-2. HttpMgr 发送 HTTP POST请求，接收到 HTTP响应 ，根据 Modules 发送到 RegisterDialog的注册模块槽函数
-3. RegisterDialog 调用对应handler函数，显示 “用户注册成功”，切换注册成功倒计时页面 显示 “注册成功，xxx秒后返回登录”
-
-#+begin_example cpp
-RegisterDialog::on_sure_btn_clicked() // 校验各类用户输入，然后构造为JSON，交给 HttpMgr
-HttpMgr::PostHttpReq(QUrl url, QJsonObject json, ReqId req_id, Modules mod) // 发送 HTTP POST请求，读取 HTTP响应
-HttpMgr::HttpMgr()::connect(this, &HttpMgr::sig_http_finish, this, &HttpMgr::slot_http_finish)
-HttpMgr::slot_http_finish(ReqId id, QString res, ErrorCodes err, Modules mod) // 按 Modules 发送到 注册模块信号
-RegisterDialog::RegisterDialog(QWidget *parent)::connect(HttpMgr::GetInstance().get(), &HttpMgr::sig_reg_mod_finish, this, &RegisterDialog::slot_reg_mod_finish);
-RegisterDialog::slot_reg_mod_finish(ReqId id, QString res, ErrorCodes err) // 调用对应的 handler函数
-RegisterDialog::initHttpHandlers()::_handlers.insert(ReqId::ID_REG_USER, [this](QJsonObject jsonObj){/**/}) // 显示 “用户注册成功”，调用 ChangeTipPage()
-RegisterDialog::ChangeTipPage() // 切换注册成功倒计时界面（stackedWidget），启动定时器
-RegisterDialog::RegisterDialog(QWidget *parent)::connect(_countdown_timer, &QTimer::timeout, [this](){
-  // ...
-  if(_countdown==0){
-      _countdown_timer->stop();
-      emit sigSwitchLogin();
-      return;
-  }
-  _countdown--;
-  auto str = QString("注册成功，%1 s后返回登录").arg(_countdown);
-  ui->tip_lb->setText(str);
-})
-#+end_example
-
-*** 密码重置流程？
-1. 用户在 ResetDialog 输入重置信息 点击注册按钮后，触发槽函数 校验用户输入，构造JSON
-2. HttpMgr 发送 HTTP POST请求，接收 HTTP响应，根据 Modules 发送到 ResetDialog重置模块槽函数
-3. ResetDialog 解析JSON，调用对应 handler函数，显示 “重置成功，点击返回登录”
-
-#+begin_example cpp
-ResetDialog::on_sure_btn_clicked() // 验证用户输入，打包用户输入为JSON，调用 HttpMgr::PostHttpReq(QUrl(gate_url_prefix+"/reset_pwd"),json_obj, ReqId::ID_RESET_PWD,Modules::RESETMOD);
-HttpMgr::PostHttpReq(QUrl(gate_url_prefix+"/reset_pwd"),json_obj, ReqId::ID_RESET_PWD,Modules::RESETMOD) // 发送 HTTP POST请求，读取HTTP响应
-connect(this, &HttpMgr::sig_http_finish, this, &HttpMgr::slot_http_finish);
-HttpMgr::slot_http_finish(ReqId id, QString res, ErrorCodes err, Modules mod) // 按 Modules 发送到重置模块
-ResetDialog::ResetDialog(QWidget *parent)::connect(HttpMgr::GetInstance().get(), &HttpMgr::sig_reset_mod_finish, this,&ResetDialog::slot_reset_mod_finish);
-ResetDialog::slot_reset_mod_finish(ReqId id, QString res, ErrorCodes err) // 解析JSON，调用对应 handler函数
-ResetDialog::initHandlers()::_handlers.insert(ReqId::ID_RESET_PWD, [this](QJsonObject jsonObj){}) // 显示 "重置成功，点击返回登录"
-#+end_example
-
-*** 搜索好友流程？
-1. 用户搜索框输入用户名，点击“查找 uid/name”，将用户输入打包成JSON，通过 TcpMgr发送 搜索用户请求 到服务器（ID_SEARCH_USER_REQ）
-2. TcpMgr 收到来自服务端的 搜索用户回包（ID_SEARCH_USER_RSP），解析JSON，将用户搜索结果交给 SearchList
-3. SearchList 创建 查找成功对话框（FindSuccessDlg）。（可选）若查找的是自己直接返回（通过SearchInfo中的uid查），若查找的本身就是自己的好友，则跳转到好友聊天界面（通过UserMgr查）
-
-#+begin_example cpp
-SearchList::connect(this, &QListWidget::itemClicked, this, &SearchList::slot_item_clicked); // 用户点击 "查找 uid/name" 这个 AddUserItem后
-SearchList::slot_item_clicked(QListWidgetItem *item) // 判断用户点击的item类型是 AddUserItem，将用户输入信息打包成JSON，通过 TcpMgr 发送消息 TcpMgr::sig_send_data(ReqId::ID_SEARCH_USER_REQ, jsonData);
-TcpMgr::slot_send_data(ReqId reqId, QByteArray dataBytes) // 发送请求到服务端
-TcpMgr::initHandlers()::_handlers.insert(ID_SEARCH_USER_RSP, [this](ReqId id, int len, QByteArray data) {}) // 服务器回包 ID_SEARCH_USER_RSP，解析JSON，将搜索到的用户结果（SearchInfo）作为信号参数，发出信号 sig_user_search(search_info);
-SearchList::connect(TcpMgr::GetInstance().get(), &TcpMgr::sig_user_search, this, &SearchList::slot_user_search);
-SearchList::slot_user_search(std::shared_ptr<SearchInfo> si) // 创建 查找成功对话框（FindSuccessDlg），这里面还有逻辑 如果查找的是自己就返回（通过SearchInfo中的uid查），若查找的本身就是自己的好友（通过UserMgr查）则跳转到好友聊天界面
-#+end_example
-
-*** 添加好友流程？
-1. 「申请好友方」搜索框输入用户名，点击“查找 uid/name”，进入 搜索好友流程（流程见上边），搜索到后弹出 查找成功对话框（FindSuccessDlg），点击“添加到通讯录”，出现 申请添加好友对话框（ApplyFriend），用户在 ApplyFriend 中填写信息，点击 “确认”，用户输入内容被打包成 JSON 通过 TcpMgr 发送到服务端（ID_ADD_FRIEND_REQ）
-2. 「申请好友方」通过 TcpMgr 收到来自服务端的 添加好友回包（ID_ADD_FRIEND_RSP），解析JSON，显示 “Add Friend Success”
-3. 「被申请好友方」通过 TcpMgr 收到来自服务端的 通知添加好友请求（ID_NOTIFY_ADD_FRIEND_REQ），解析JSON，更新内存中 UserMgr 中的申请列表，在 UI 中显示红点，并在 聊天对话框的添加好友页（ApplyFriendPage）增加一项（ApplyFriendItem），用户点击 添加好友项 中的 “确认添加”，显示 认证好友对话框（AuthenFriend），用户填写完信息（此时可以填备注、标签之类的内容）点击 “确认”，根据用户输入构造JSON，由 TcpMgr 发送到服务端（ID_AUTH_FRIEND_REQ）
-4. 「申请好友方」通过 TcpMgr 收到来自服务端的 通知认证请求好友回包（ID_NOTIFY_AUTH_FRIEND_REQ），解析JSON，更新 UserMgr 中的好友列表，更新 UI 界面中的好友列表（插入新添加的好友）
-5. 「被申请好友方」通过 TcpMgr 收到来自服务端的 认证好友回包（ID_AUTH_FRIEND_RSP），解析JSON，更新 UserMgr 中的好友列表，更新 UI 界面中的好友列表（插入新添加的好友）
-
-#+begin_example cpp
-// 搜索到用户后，弹出查找成功对话框（FindSuccessDlg）
-FindSuccessDlg::on_add_friend_btn_clicked() // 点击“添加到通讯录”，创建“申请添加好友”页面（ApplyFriend）并传入 SearchInfo参数，显示 “申请添加好友”页面
-// 用户填写完信息，点击“确认”发出信号，触发槽函数
-ApplyFriend::SlotApplySure() // 将用户信息打包成JSON，发出信号 TcpMgr::sig_send_data(ReqId::ID_ADD_FRIEND_REQ, jsonData);
-TcpMgr::slot_send_data(ReqId reqId, QByteArray dataBytes) // 发送添加好友请求到服务端
-TcpMgr::initHandlers()::_handlers.insert(ID_ADD_FRIEND_RSP, [this](ReqId id, int len, QByteArray data) {}) // 申请方收到服务端的“添加好友回包”，解析JSON，显示 "Add Friend Success "
-
-TcpMgr::initHandlers()::_handlers.insert(ID_NOTIFY_ADD_FRIEND_REQ, [this](ReqId id, int len, QByteArray data) {}) // 被申请方收到服务端的“好友申请通知回包”，解析JSON，生成 apply_info（AddFriendApply），发出信号sig_friend_apply(apply_info)
-ChatDialog::slot_apply_friend(std::shared_ptr<AddFriendApply> apply) // 更新内存中的UserMgr中apply_list，在UI界面显示红点、ui中的friend_apply_page（ApplyFriendPage）中添加一项ApplyFriendItem，用户点击ApplyFriendItem的 确认添加按钮，发出信号 ApplyFriendItem::sig_auth_friend，ApplyFriendPage的connect中的匿名函数处理，创建 授权好友页面（AuthenFriend），用户填写信息点击确认
-AuthenFriend::SlotApplySure() // 根据用户输入构造JSON，发出信号 TcpMgr::sig_send_data(ReqId::ID_AUTH_FRIEND_REQ, jsonData);
-TcpMgr::slot_send_data(ReqId reqId, QByteArray dataBytes) // 发送授权好友请求到服务端
-TcpMgr::initHandlers()::_handlers.insert(ID_NOTIFY_AUTH_FRIEND_REQ, [this](ReqId id, int len, QByteArray data) {}) // 收到服务端的“授权好友回包”，解析JSON，构造AuthInfo，发送信号 sig_add_auth_friend(auth_info);
-ChatDialog::slot_add_auth_friend(...) // 更新UserMgr中的好友信息，UI界面中插入好友到聊天列表
-TcpMgr::initHandlers()::ID_AUTH_FRIEND_RSP // 自己发起同意后的回包，解析JSON，构造AuthRsp传入信号，发出信号 sig_auth_rsp(rsp);
-ChatDialog::slot_auth_rsp(...) // UI侧：自己同意成功后同样加好友并插入列表
-#+end_example
-
-*** 动态加载聊天列表
-在列表滚动区域捕获鼠标滚轮事件，滚动到底部时发送一个加载聊天用户的信号，此时UI界面加载gif动画，后台加载好友列表，加载完毕后更新UI界面
-#+begin_example cpp
-bool ChatUserList::eventFilter(QObject *watched, QEvent *event)
-void ChatDialog::slot_loading_chat_user() // 加载gif动画（LoadingDlg，模态形式），后台ChatDialog::addChatUserList() -> UserMgr::GetChatListPerPage() -> 更新UI界面
-#+end_example
-
-*** 滚动聊天布局
+*** 客户端
+**** 滚动聊天布局
 *布局* 从外到内：ChatView -> MainLayout -> ScrollArea -> w（widget，QScrollArea中需要QWidget作为内部可滚动内容） -> pHLayout_2（为了让滚动条覆盖在内容之上） -> pVLayout_1 -> new QWidget()
 *滚动加载* 滚动条最大值改变时会发出rangeChanged信号，意味着添加了新的聊天内容导致聊天布局中的内容超出显示，调用槽函数 将滚动条设置为最大值（滚动到最底部），同时一段时间内可能多次添加聊天内容因此加入防抖动处理，每隔500毫秒将标志位isAppended=false
 #+begin_example cpp
@@ -480,58 +233,17 @@ void ChatView::onVScrollBarMoved(int min, int max)
 }
 #+end_example
 
-*** TODO 气泡聊天对话框
+**** TODO 气泡聊天对话框
 设计一个基类ChatItemBase，网格布局，见：[[id:5d43812f-d369-4b8c-9781-5486788d6e70][图:气泡聊天对话框网格布局]]
 其中 Bubble 为具体聊天气泡，对应基类 BubbleFrame，负责设置边距、设置具体消息气泡的widget、气泡绘画事件（方框和三角）；消息类型分为 文本、图片
 因此以 BubbleFrame 为基类派生 TextBubble、PictureBubble
 
-**** 图:气泡聊天对话框网格布局 :ATTACH:
+***** 图:气泡聊天对话框网格布局 :ATTACH:
 :PROPERTIES:
 :ID:       5d43812f-d369-4b8c-9781-5486788d6e70
 :END:
 [[attachment:_20250923_191619screenshot.png]]
 网格布局，NameLabel为用户名、IconLabel为用户头像、Bubble为聊天信息、Spacer为弹簧  用于将 聊天信息 挤压到右侧
-
-*** 这个项目中的验证机制怎么实现的？
-- 用户名验证：注册时要求 不能为空、只允许字母和数字
-              登录时要求 用户名不能为空
-- 邮箱验证  ：注册时、登录时 正则表达式验证邮箱格式
-- 验证码    ：要求不能为空
-- 密码      ：注册时 长度6-15，可以是字母、数字、一些特殊字符，且两次密码一致
-
-
-** 服务端——tmp
-*网关服务器* ：处理客户端HTTP请求，根据请求内容的不同，将请求分发到不同的服务器，将响应结果返回给客户端
-*状态服务器* ：存储聊天服务器的状态信息，主要是负载；网关服务器请求状态服务器（作为grpc服务端），状态服务器会返回负载较低的 聊天服务器的ip、端口、token
-*验证服务器* ：（作为grpc服务端）通过uuid生成4位随机数作为验证码，存放在redis中设置过期时间，并发送邮件到用户邮箱，用户在客户端填写信息发送到服务端后，与redis中存储的验证码对比
-*聊天服务器* ：（作为grpc服务器），Qt客户端通过TCP连接到聊天服务器，聊天服务器，向聊天服务器发送消息，若
-
-*** GateServer
-监听端口、处理连接
-HttpConnection类：数据的收发，解析HTTP请求，并交给LogicSystem处理，LogicSystem 中注册了一些业务相关的回调函数：登录、注册、获取验证码、重置密码
-
-*** StatusServer
-- 核心 ::
-  1. 创建StatusServiceImpl对象，用于构建并启动grpc服务器，接收请求
-  2. StatusServiceImpl返回负载最小的ChatServer的ip、host、token
-- 辅助 ::
-  1. ConfigMgr为StatusServiceImpl获取ChatServer的配置信息，并存入StatusServiceImpl
-  2. RedisMgr缓存查询负载最小ChatServer时的信息：负载最小的服务器、登录的数量
-- 细节 ::
-
-*** ChatServer
-- 核心 ::
-  1. 创建ChatServiceImpl对象，用于构建并启动grpc服务器，用于与qt客户端通信
-  2. CServer保管很多CSession，用会话id识别
-  3. CSession用于读写数据，将读到的数据存放到LogicSystem的消息队列，将要写的数据先放到发送队列
-  4. LogicSystem注册了相关逻辑的回调函数：登录、搜索用户、添加好友、认证好友
-  5. LogicSystem处理消息队列中的消息，调用相应回调函数
-  6. 登录：验证token
-- 辅助 ::
-  1. ConfigMgr
-  2. AsioIOServicePool
-  3. RedisMgr
-- 细节 ::
 
 
 * 开放原子大赛:开源开发者工具及应用挑战赛
@@ -568,9 +280,108 @@ HttpConnection类：数据的收发，解析HTTP请求，并交给LogicSystem处
 存储 行号 + 行内容 + 匹配内容
 
 
-* TODO 大学生服务外包创新创业大赛
+* 基于C++11重构百万并发Reactor服务器
+** 项目介绍
+这个一个基于 reactor模型实现的高并发TCP服务器框架，基于这个TCP服务器框架可以根据业务逻辑进行扩展（eg：TCP服务器框架基础上封装EchoServer），具有 事件驱动、可扩展性高、线程安全 等特点。
+** 整体架构
+这个TCP服务器框架 采用主从reactor模式：主事件循环绑定Accept，负责监听并且接受新连接，分配从事件循环创建Connection，负责IO。它的底层是通过 epoll_wait 不断返回事件，根据事件类型调用不同回调函数（上层向下层注册回调函数，下层根据触发的事件类型调用不同回调函数）[fn:1]。
+在这个TCP服务器框架上可以根据业务逻辑封装服务器（eg：EchoServer），添加可选的线程池用于处理具体业务。
+** 线程模型
+TCP层，one thread one loop（一个线程对应一个事件循环）：（主线程）主事件循环绑定Accept，负责监听、接受新连接；（其他线程）从事件循环线程池中的从事件循环绑定 Connection，负责IO。
+应用层，（其他线程）有可选的工作线程池负责业务处理（计算密集型任务）。
+** 负载均衡（Connection如何与EventLoop对应）
+对客户端socket的fd进行哈希运算（对线程数量取余）得到的数作为从事件循环的下标索引，以此事件循环创建Connection
+#+begin_example cpp
+/* 客户端socket的fd通过哈希计算得出的值作为要取的从事件循环的下标 */
+spConnection conn(new Connection(subloops_[clientsock->fd()%threadnum_].get(),std::move(clientsock)));
+#+end_example
+
+** tmp
+** YES 从 accept 新连接到连接读写、消息处理、再到回包的完整链路描述，包括涉及的对象和回调绑定位置
+- 新连接： *「主线程」* Acceptor::newconnection()接受连接，构造客户端socket，回调TcpServer::newconnection()，在从EventLoop中选择一个，并创建Connection，Connection内部有客户端socket和clientchannel并注册读写/错误/关闭回调，后续Channel::handleevent()触发对应回调
+- 消息处理/回包： *「IO线程A」* clientchannel触发读事件，回调Connection::onmessage()，Connection::onmessage()读取数据到自己的缓冲区，回调TcpServer::onmessage()，TcpServer::onmessage()回调上层EchoServer::HandleMessage()，EchoServer::HandleMessage()中将 =任务std::bind(&EchoServer::OnMessage,this,conn,message)= 放入工作线程池的任务队列， *「WORK线程A」* 调用任务EchoServer::OnMessage，EchoServer::OnMessage调用Connection::send()发送响应，Connection::send()中判断出当前执行该函数的线程是「WORK线程A」，于是通过EventLoop::queueinloop将任务放入conn对应的EventLoop::taskqueue中，EventLoop::queueinloop内通过eventfd唤醒「IO线程A」， *「IO线程A」* 处理taskqueue
+
+** YES 为什么要用 eventfd 唤醒而不使用其他手段？
+- 简单只需1个fd，与epoll无缝集成
+  pipe                  ：需要2个fd
+  pthread条件变量/信号量：不能纳入epoll的等待集合
+  signal                ：全局性强
+  timerfd               ：专门做计时器事件，不适合作为跨线程“任务到达”的通知
+  C++11互斥锁/条件变量  ：与epoll集成不好，会造成双重等待（既等条件变量，又等epoll_wait）
+
+** YES Connection在回调过程中为什么要用shared_from_this()，用this行吗，或者 new 一个Connection的共享指针？
+# Connection::onmessagecallback_(shared_from_this(),message);
+- 用 this 不行，因为 this 不能增加 Connection 的引用计数，可能在回调过程中 Connection 被意外释放；new一个Connection的共享指针也不行，因为这样创建的共享指针引用计数与正在管理Connection的共享指针引用计数不同步（创建了新的shared_ptr），使用shared_from_this() 就能共享正在管理Connection的共享指针的引用计数
+
+** YES 如何做消息拆包？Buffer::pickmessage() 三种分隔方式各自适用什么场景？
+- 消息 = 消息头(固定4字节) + 消息体；读取消息头获取长度信息，根据长度信息读取消息体
+- 0：无分割符，适合定长/持续流（eg：音视频）
+  1：4字节消息头（默认），处理粘包问题
+  2：\r\n\r\n分隔，处理HTTP
+
+** EventLoop::stop_ 是原子变量，停止时如何保证不会丢任务？如何优雅退出所有 subloops_ 与工作线程？
+- EventLoop::stop() 会将 stop_ 设置为 true，然后通过 eventfd 通知 EventLoop 将任务队列中的任务全部处理，同时 stop_=true 后，EventLoop::run() 中 while循环停止，也就是 事件循环停止了
+- 设计了一个 ThreadPool::stop()，将 原子变量 stop_设置为true，然后唤醒全部阻塞的线程，等待它们执行完成；被唤醒的线程发现 stop_=true且任务队列为空就直接return，否则先将任务做完，下次while循环退出
+  *补充* ：不直接在析构函数中设计这个逻辑是为了增加灵活性，用户可以直接调用 stop() 来手动停止线程池；ThreadPool::stop() 中一开始设计 if(stop_) return; 是因为join过的线程不能再join
+  #+begin_example cpp
+  void ThreadPool::stop()
+  {
+      if (stop_) return;       // 被join过的线程不能再join的，否则会调用terminate；eg：第一次stop()，对所有线程join了；第二次 stop 若没有这行，则再次join，则程序终止
+      stop_ = true;
+      condition_.notify_all();  // 唤醒全部的线程。
+      // 等待全部线程执行完任务后退出。
+      for (std::thread &th : threads_)
+          th.join();
+  }
+  #+end_example
+
+** YES 为什么 EventLoop 里集成了 timerfd_？EventLoop::conns_ 和 TcpServer::conns_ 都维护了连接，为什么要两份？
+- timerfd是计时器，可以打破程序执行的流程，每隔一段事件去做某件事，这里通过 timerfd 来定期检查 Connection 是否超时，将超时Connection从EventLoop中删除，并从TcpServer中删除
+  #+begin_comment
+  *具体来说* ：EventLoop中继承 timerfd、timerchannel 周期性触发 handletimer()，handletimer()设置重新计时并遍历所有 Connection，若超时，则从EventLoop::conns中删除，回调TcpServer::removeconn，TcpServer::removeconn将Connection从TcpServer::conns中删除
+  #+end_comment
+
+- TcpServer::conns 管理全局的Connection（eg：统一关闭），EventLoop::conns管理局部Connection（eg：空闲连接检测）
+  #+begin_comment
+  假设将空闲连接检测交给TcpServer::conns，则TcpServer性能不好，因为需要定期完整检查全部Connection，而TcpServer的职责主要是监听和接受新连接
+  #+end_comment
+
+** YES 有无考虑进程级信号处理（如 SIGINT）触发所有 loops、ThreadPool 的优雅退出？
+- 有进程级的信号处理，捕获到 SIGINT、SIGTERM 时，调用自定义的Stop函数
+  #+begin_example cpp
+  signal(SIGTERM,Stop);    // 信号15，系统kill或killall命令默认发送的信号。
+  signal(SIGINT,Stop);     // 信号2，按Ctrl+C发送的信号。
+
+  // Stop函数中
+  echoserver->Stop();
+  delete echoserver;
+  #+end_example
+
+** YES 实现主从 Reactor 吗？mainloop_ 和 subloops_ 的职责边界是什么？新连接如何在多个 EventLoop 之间分配（策略/理由），支持连接迁移吗？
+- 主事件循环负责 监听/接受 新连接（Acceptor绑定在主事件循环），从事件循环负责Connection的IO事件、超时管理（事件循环内有个定时器，每隔一段时间检查Connection）
+- 使用 哈希方法，简单且无锁（eg：轮询按顺序分配连接，因此可能需要锁）
+
+** YES 为什么 Socket、Channel 在不同地方用 unique_ptr，而连接放在 std::map<int, spConnection>？
+- socket表示网络连接，channel表示事件，每个 Connection 独占各自的socket、channel，因此使用 unique_ptr；而 Connection 存在于 TcpServer 和 EventLoop 中，且在一些回调函数中需要传递 Connection，因此使用 shared_ptr，以便在回调链路中延续生命周期
+
+** YES ThreadPool 主要用于 IO 线程还是工作线程？threadtype_ 的意图是什么？
+- 都有，用 threadtype_ 标识线程池类型
+
+** YES 用什么方式压测（客户端、QPS、RT、连接数、CPU/内存）？
+- 虚拟机：4核CPU、2g内存 Ubuntu系统
+  sh脚本中在后台起了30个客户端，每个客户端发送10万个请求，计算下来大概1秒10万
+- autodl重庆A区：32核CPU 120g内存 Ubuntu系统
+  sh脚本中在后台起了30个客户端，每个客户端发送100万个请求，关闭可选的工作线程池，IO线程数改为30（也就是整个程序31个线程），计算下来QPS=100万
+  + top命令看CPU和内存
+  + QPS=请求/每秒，QPS是每秒查询率
+
+
 
 * 虚拟数字人
+** 项目流程
+基于博物馆场景的数据集对大模型进行微调，增强模型对于博物馆场景的理解能力，但模型对于具体数字类数据的推理依旧不够准确；因此考虑外挂知识库，具体做法是将知识库进行向量化存入向量库，用户查询时，用户查询会被向量化并在向量库中进行相似度搜索，相似度top k的内容会作为模型的参考，我们可以设置prompt要求模型直接使用检索出的数字，以达到数字类数据的推理准确性。
+
+** （低优先级）具体细节
 *微调流程* ：[[https://xtx0o8yn7x.feishu.cn/docx/XjvpdaeQcoF8d3xhpbCcoOJNn9b][微调]]
 1. 加载分词器​​（AutoTokenizer）预处理数据，使用分词器将文本编码为数字，得到数据集
 2. 加载模型​​（AutoModelForCausalLM + BitsAndBytesConfig量化）：量化，减少显存占用
@@ -595,7 +406,6 @@ HttpConnection类：数据的收发，解析HTTP请求，并交给LogicSystem处
 - [X] 虚拟数字人需要适配特定场景（比如客服、教育）的交互风格，你们的微调数据集是怎么构建的？
   + 从博物馆官网上爬来，然后交给chatgpt生成角色对话，且保持角色语气一致性
 
-
 *外挂知识库流程* ：[[https://xtx0o8yn7x.feishu.cn/docx/UOAadjjReoI6UBxPq4lcI9frnMb][外挂知识库]]
 # 以下都是 langchain 的模块
 1. 用 UnstructuredFileLoader 加载文件，将非结构化文件（eg：PDF、Word、TXT等）转换为统一格式（Document对象列表：List[Document]）
@@ -617,13 +427,8 @@ HttpConnection类：数据的收发，解析HTTP请求，并交给LogicSystem处
 ]
 #+end_example
 
-- [X] 为什么使用 FAISS？
-  （facebook开源）主要因为与 langchain 集成，方便使用（很多api调用方便）
-- [X] 为什么选用 text2vec-large-chinese模型？
-  中文模型，langchain 集成，调用方便
-
-
-** LoRA(低秩矩阵适配)原理
+** （低优先级）LoRA原理
+# （低秩矩阵适配）
 1. *秩 代表信息量* ：秩越低则该矩阵所含信息量越少
    #+begin_comment
    [1 2 3] 这个矩阵秩为2，所含信息多
@@ -642,3 +447,13 @@ HttpConnection类：数据的收发，解析HTTP请求，并交给LogicSystem处
 
 3. 训练时将原始矩阵冻结，用两个低秩矩阵A、B表示原始矩阵，并训练A、B
    推理时 =最终权重矩阵 = 原始权重矩阵 + 低秩矩阵A * 低秩矩阵B=
+
+
+* Footnotes
+
+[fn:1]
+#+begin_comment 示例
+上层：EchoServer
+下层：TcpServer
+再下层：epoll_wait
+#+end_comment

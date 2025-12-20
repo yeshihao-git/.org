@@ -44,7 +44,7 @@ Qt内存管理机制，用于防止内存泄漏
 *特点* ：
 - 松耦合   :: 将通信双方解耦（信号发送者只需要发送信号，不需要知道接收者的存在；接收者只需关联信号，实现槽函数逻辑，无需了解发送者细节）
 - 类型安全 :: （qt5）元对象系统会在编译期检查信号槽的 参数类型、参数数量
-- 灵活性 ::
+- 灵活性   ::
   1. 一个信号 连接 一个槽
   2. 一个信号 连接 另一个信号
   3. 一个信号 连接 多个槽
@@ -73,7 +73,7 @@ connect(sender, &Sender::valueChanged, [](int value) {
   sender 和 receiver 在同一线程 ? 直接连接 : 队列连接
 
 - Qt::DirectConnection         :: 直接连接
-  信号触发时，槽函数会在发送者线程中执行
+  信号触发时，发送者线程直接调用槽函数
 
 - Qt::QueuedConnection         :: 队列连接
   信号触发时，qt会将信号打包成 qt事件，放入接收者线程的事件队列，接收者线程运行事件循环从事件队列中取出事件并执行槽函数
@@ -96,7 +96,7 @@ connect(sender, &Sender::valueChanged, [](int value) {
 :END:
 1. 元对象编译器（moc）扫描带有Q_OBJECT宏的类，提取信号、槽等元信息，生成 moc_XXX.cpp 文件
 2. 程序运行到 QObject::connect，从发送者和接收者关联的moc文件中取出信号、槽对应的元索引，将 “发送者指针、信号索引、接收者指针、槽函数索引” 等信息存入内存中的QObject内部连接列表
-3. 信号触发，调用发送者moc文件中的信号函数，信号函数内部调用 QMetaObject::activate() 遍历 QObject内部连接列表 找到与当前信号关联的所有 “接收者-槽”对，根据connection连接类型选择 直接调用 或 通过事件队列调用 槽函数，根据槽函数的元索引找到槽函数并调用
+3. 信号触发，调用发送者moc文件中的信号函数，信号函数内部调用 QMetaObject::activate() 遍历 QObject内部连接列表 找到与当前信号关联的所有 “接收者-槽”对，根据connect连接类型选择 直接调用 或 通过事件队列调用 槽函数，根据槽函数的元索引找到槽函数并调用
 
 相关代码见：[fn:2]
 #+begin_example cpp
@@ -248,6 +248,13 @@ qApp->setStyleSheet("QGroupBox, QGroupBox * { color: red; }"); // QGroupBox中�
 2. 元对象编译器（moc）：预处理含 `Q_OBJECT` 的类，生成元信息代码（如信号槽关联逻辑）。
 3. `QMetaObject` 类：提供运行时访问元信息的接口（如 `className()`、`invokeMethod()` 等）。
 4. 继承 `QObject`：类需继承 `QObject` 以启用元对象功能。
+
+** tmp
+QObject类 为可以利用元对象系统的对象提供了基类
+Q_OBJECT宏 开启元对象功能
+moc 实现元对象功能
+
+元对象系统 用于实现 信号槽机制、反射（QObject::metaObject()）
 
 
 * QObject的构造和析构顺序

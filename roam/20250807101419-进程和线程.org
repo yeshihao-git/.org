@@ -2,7 +2,7 @@
 :ID:       27145501-fa0b-4b05-a5df-1cd2f6a46226
 :END:
 #+title: 进程、线程、协程
-#+filetags: operating_system
+#+filetags: os
 
 * 进程
 1. 运行中的程序， *资源分配* 的基本单位，拥有 *独立的内存空间* ，考虑 *安全* 选进程

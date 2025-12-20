@@ -2,7 +2,7 @@
 :ID:       9b23b4a1-11f8-441e-9b34-425d3835cc1a
 :END:
 #+title: IO多路复用
-#+filetags: operating_system
+#+filetags: os
 
 * IO多路复用 [[https://www.bilibili.com/video/BV1RJ4m1b7cy/?vd_source=4441bc96046659b39d059d583f36ff52][bilibili-码农的荒岛求生]] [[https://xiaolincoding.com/os/8_network_system/selete_poll_epoll.html#epoll][小林coding]]
 1. 将一批文件描述符（fd）交给（操作系统）内核监视状态，返回里面可读/写的 fd 列表
@@ -29,7 +29,6 @@
 1. 拷贝位图（用户空间 -> [[id:cbf178f7-ce4b-435d-bc2c-55cb1e39816e][内核空间]]）
 2. 内核 *遍历* fd 检查若有读写事件，标记，拷贝位图（内核态 -> 用户态），否则阻塞
 3. 用户 *遍历* 找到可读可写 fd，处理
-
 *特点* ：
 1. 监听fd数量：1024（bitmap）
 2. 每次调用 select：2次完整fd集合的拷贝（用户态 <-> 内核态）；时间复杂度： =O(n)=
@@ -42,7 +41,6 @@
 *原理* ：
 用 =链表= 表示 fd集合
 （同 select）
-
 *特点* ：
 1. 监听fd数量：无限制（bitmap）
 2. 每次调用 poll：2次完整fd集合的拷贝（用户态 <-> 内核态）；时间复杂度： =O(n)=
@@ -58,15 +56,12 @@
 2. epoll_ctl 将待监听的fd 加入红黑树；时间复杂度： =O(logn)=
 3. 红黑树中fd触发读写事件 加入就绪链表
 4. epoll_wait 从链表 取出fd；时间复杂度： =O(1)=
-
 *特点* ：
 1. 监听fd数量：无限制
 2. 增加监听fd：时间复杂度：O(logn)
 3. 返回就绪fd：时间复杂度：O(1)
-
-
-*水平触发LT* ：某个fd *就绪* (可读/可写) ，epoll_wait 每次调用都会返回该fd
-*边缘触发ET* ：某个fd *未就绪 -> 就绪* ，epoll_wait 才会返回该fd， 减少系统调用次数
+*水平触发LT* ：某个fd *就绪* (可读/可写) ，epoll_wait 每次调用都会返回
+*边缘触发ET* ：某个fd *未就绪 -> 就绪* ，epoll_wait 才会返回（减少系统调用次数，性能更好）
 
 ** epoll对象图 :ATTACH:
 :PROPERTIES:

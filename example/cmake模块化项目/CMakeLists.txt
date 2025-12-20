@@ -12,5 +12,5 @@ project(CppCMakeDemo LANGUAGES CXX)
 
 include(MyUsefulFuncs)
 
-add_subdirectory(pybmain)
+add_subdirectory(pybmain) # 添加子目录，执行其CMakeLists.txt以构建子项目
 add_subdirectory(biology)

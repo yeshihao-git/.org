@@ -23,9 +23,9 @@
    - 普通HTTP请求        :: 后续继续HTTP通信
    - 想建立WebSocket连接 :: HTTP请求头中有以下字段
      #+begin_example css
-     Connection: Upgrade                                /* 浏览器希望升级协议 */
-     Upgrade: WebSocket                                 /* 希望升级为 WebSocket */
-     Sec-WebSocket-Key: T2a6wZlAwhgQNqruZ2YUyg==\r\n    /* 随机生成的base64码 */
+     Connection: Upgrade                                  /* 浏览器希望升级协议 */
+     Upgrade: WebSocket                                   /* 希望升级为 WebSocket */
+     Sec-WebSocket-Key: T2a6wZlAwhgQNqruZ2YUyg==\r\n      /* 随机生成的base64码 */
      #+end_example
 3. 服务器返回 状态码为101的报文（含有 用公开算法将客户端base64码生成的字符串）
    #+begin_example css

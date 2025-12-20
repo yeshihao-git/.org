@@ -2,7 +2,7 @@
 :ID:       d1a53bae-2b04-4f9e-8a40-2f34a04b67bd
 :END:
 #+title: 僵尸进程、孤儿进程
-#+filetags: operating_system
+#+filetags: os
 
 *僵尸进程* ：
 停止运行，但没被父进程回收的进程；系统中仍保留着 PCB，占用着 PID ，若僵尸进程大量产生，系统无法创建新进程

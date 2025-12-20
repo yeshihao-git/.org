@@ -2,7 +2,7 @@
 :ID:       0880c9ba-5beb-4cdc-8ef1-178a85ff6f6c
 :END:
 #+title: 同步、异步、IO阻塞、IO非阻塞
-#+filetags: operating_system
+#+filetags: os
 
 * 同步、异步、IO阻塞、IO非阻塞
 # 注意这里是 IO阻塞 不同于 进程的阻塞

@@ -51,7 +51,7 @@
 *避免* ：使用 =tcp_syncookies= 绕过 半连接队列 直接 accept 连接：第一次握手，服务端不会将 sock 放入半连接队列，而是生成 cookies；第二次握手带上 cookies；第三次握手带上 cookies，服务端验证 cookies是不是之前发的那个，若是，则建立连接放入 全连接队列
 
 
-* 验证
+* tmp
 
 ** 已建立连接但客户端突然断电怎么办？ [[https://www.xiaolincoding.com/network/3_tcp/tcp_interview.html#%E5%A6%82%E6%9E%9C%E5%B7%B2%E7%BB%8F%E5%BB%BA%E7%AB%8B%E4%BA%86%E8%BF%9E%E6%8E%A5-%E4%BD%86%E6%98%AF%E5%AE%A2%E6%88%B7%E7%AB%AF%E7%AA%81%E7%84%B6%E5%87%BA%E7%8E%B0%E6%95%85%E9%9A%9C%E4%BA%86%E6%80%8E%E4%B9%88%E5%8A%9E][小林coding]]
 在一个时间段内没有任何交互，启动 *TCP保活机制* ，服务端每隔段时间发送一个探测报文，都没得到响应则TCP连接死亡；但保活机制的持续时间有点长（2个多小时），我们可以在 *应用层实现一个心跳机制*

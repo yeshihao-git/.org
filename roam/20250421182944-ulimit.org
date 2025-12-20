@@ -1,8 +1,0 @@
-:PROPERTIES:
-:ID:       cf9edd3d-149a-40ac-87bf-ed4256128db9
-:END:
-#+title: ulimit
-#+filetags: linux
-
-* ulimit
-1. ulimit 用于查看、设置 *文件大小限制* ，查看所有文件大小限制： =ulimit -a= ，设置文件大小限制： =ulimit -<选项> <值>=

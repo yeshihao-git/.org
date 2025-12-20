@@ -2,9 +2,12 @@
 :ID:       52880cac-b451-4efc-bf87-3edde817eb06
 :END:
 #+title: git
-#+filetags: index
+#+filetags: git
 
 * git
+
+
+* tmp
 1. git 是用于版本管理的工具，常见操作见 [[id:3eb41807-bf67-46de-a1d1-93fcb85e3038][git table]]；
 2. git 有三个重要的区域：工作区（Working Directory）、暂存区（Index）、版本区（HEAD指向某个版本）；分离的HEAD 是指 HEAD 指向某个 commit 而不是某个分支的最后一次提交
 3. git相关的配置文件见 [[id:87c46680-515a-4b58-b0f2-b606612a1554][git配置文件]]，可以查看用户名、密码、代理，忽略跟踪的文件，子模块的配置等

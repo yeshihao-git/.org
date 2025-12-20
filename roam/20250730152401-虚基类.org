@@ -7,6 +7,7 @@
 * 多重继承-菱形继承问题
 内存浪费、二义性 -> 最派生类会得到直接基类所继承的最基类成员变量的多个副本[fn:1]
 
+
 * 虚基类 [[https://www.learncpp.com/cpp-tutorial/virtual-base-classes/][learncpp25.8]]
 1. 在 继承列表中加入 =virtual= ，最派生类中的最基类成员变量只会有一份；用于解决 多重继承-菱形继承问题
    #+begin_src cpp :results output :namespaces std :includes <iostream>

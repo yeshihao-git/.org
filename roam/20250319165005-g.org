@@ -4,7 +4,16 @@
 #+title: gcc
 #+filetags: cpp
 
-* gcc(gnu cpp compiler) [[https://www.learncpp.com/cpp-tutorial/introduction-to-the-compiler-linker-and-libraries/][learncpp0.5]]
+* 快速开始
+gcc 通常结合 [[id:a9d0b4ef-0f28-4bba-b882-83e96a9f2bc2][pkg-config]] 使用，通过 pkg-config 自动获取包含头文件路径参数、链接库文件路径参数，示例：[fn:1]
+
+#+name: 现代方法 - 结合 pkg-config 进行编译
+#+begin_example bash
+g++ -g -o main main.cpp $(pkg-config --cflags --libs opencv4)
+#+end_example
+
+
+* gcc（gnu cpp compiler） [[https://www.learncpp.com/cpp-tutorial/introduction-to-the-compiler-linker-and-libraries/][learncpp0.5]]
 1. *编译流程* ：源代码 -> [[id:a48d200f-d7ad-41ad-8592-a7ff528378ea][预处理]] =.cpp文件= (翻译单元) -> 编译成 =.o文件= (机器指令) -> [[id:04b223e7-c9e1-4c4b-a75d-733e9f16c972][链接]](.o文件、[[id:6012c06e-c6c5-4001-a287-dfe05404724d][库文件]]) -> 可执行文件(elf、exe)
    见：[[id:3ea7cd10-aa1a-4da9-bced-284f2b510732][编译、链接图]]
 
@@ -38,4 +47,46 @@
 [[attachment:_20250804_172211screenshot.png]]
 
 
+* pkg-config
+:PROPERTIES:
+:ID:       a9d0b4ef-0f28-4bba-b882-83e96a9f2bc2
+:END:
+用于查询包信息，需要包提供 *.pc文件*
+|----------------------+------------|
+| 命令行参数           | 作用       |
+|----------------------+------------|
+| --list-package-names | 列出所有包 |
+| --modversion <包名>  | 包版本号   |
+|----------------------+------------|
 
+*.pc文件*
+描述包的元数据，包括：
+1. 头文件路径（-I参数）
+2. 库文件路径（-L参数）
+3. 库名称    （-l参数）
+4. 版本号
+5. 依赖
+6. ...
+
+*如何查找.pc文件所在的路径？*
+|-----------------+----------------------+---------------------------|
+| 环境变量        | 路径                 | 作用                      |
+|-----------------+----------------------+---------------------------|
+| PKG_CONFIG_PATH |                      | .pc搜索路径（用户自定义） |
+|                 | /usr/lib/pkgconfig   | .pc搜索路径（系统默认）   |
+|                 | /usr/share/pkgconfig | .pc搜索路径（系统默认）   |
+|-----------------+----------------------+---------------------------|
+
+
+* Footnotes
+
+[fn:1]
+#+begin_example bash
+# 链接库参数
+❯ pkg-config --libs opencv4
+-lopencv_gapi -lopencv_stitching -lopencv_alphamat -lopencv_aruco -lopencv_bgsegm -lopencv_bioinspired -lopencv_ccalib -lopencv_cvv -lopencv_dnn_objdetect -lopencv_dnn_superres -lopencv_dpm -lopencv_face -lopencv_freetype -lopencv_fuzzy -lopencv_hdf -lopencv_hfs -lopencv_img_hash -lopencv_intensity_transform -lopencv_line_descriptor -lopencv_mcc -lopencv_quality -lopencv_rapid -lopencv_reg -lopencv_rgbd -lopencv_saliency -lopencv_signal -lopencv_stereo -lopencv_structured_light -lopencv_phase_unwrapping -lopencv_superres -lopencv_optflow -lopencv_surface_matching -lopencv_tracking -lopencv_highgui -lopencv_datasets -lopencv_text -lopencv_plot -lopencv_videostab -lopencv_videoio -lopencv_viz -lopencv_wechat_qrcode -lopencv_xfeatures2d -lopencv_shape -lopencv_ml -lopencv_ximgproc -lopencv_video -lopencv_xobjdetect -lopencv_objdetect -lopencv_calib3d -lopencv_imgcodecs -lopencv_features2d -lopencv_dnn -lopencv_flann -lopencv_xphoto -lopencv_photo -lopencv_imgproc -lopencv_core
+
+# 包含头文件路径参数
+❯ pkg-config --cflags opencv4
+-I/usr/include/opencv4
+#+end_example

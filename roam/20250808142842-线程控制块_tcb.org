@@ -2,7 +2,7 @@
 :ID:       cb213eda-0332-4351-8136-b7712d62c8bd
 :END:
 #+title: 线程控制块(TCB)
-#+filetags: operating_system
+#+filetags: os
 
 * 线程控制块(TCB)
 线程ID

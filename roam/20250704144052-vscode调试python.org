@@ -1,8 +1,8 @@
 :PROPERTIES:
 :ID:       0b7442a8-12cf-4091-a54e-a905e2647991
 :END:
-#+title: vscode调试python
-#+filetags: python vscode
+#+title: vscode配置python开发环境
+#+filetags: vscode
 
 * vscode调试python [[https://vscode.js.cn/docs/python/debugging#_set-configuration-options][参考]]
 1. 安装扩展： =Python Debugger=
@@ -44,3 +44,7 @@
        ]
    }
    #+end_src
+
+** vscode调试pytorch时输出张量形状
+1. 启动 python 调试：[[id:0b7442a8-12cf-4091-a54e-a905e2647991][vscode调试python]]
+2. 在 *调试控制台* 输入： =tensor.shape=

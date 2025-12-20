@@ -2,9 +2,24 @@
 :ID:       ec7aef91-2628-4ba9-b300-16652314877f
 :END:
 #+title: linux
-#+filetags: index
+#+filetags: linux
 
 * linux
 linux有很多发行版，比如 [[id:29a2fc5a-1db6-4a13-a5cd-397e587c21ec][arch]]
 还有很多重要的目录用于：配置系统、查看系统信息（进程）、存放文件（二进制文件、头文件、库文件、缓存、日志）等，见 [[id:7572251f-95e5-4c51-a7cd-93968faa6e39][linux重要的目录]]
 当我们按下电源时，[[id:0dbba04f-6cfd-4a4b-9ce9-a70c90ec53a9][linux启动流程]] 便开始了
+
+
+* RPATH
+linux中运行时路径（Run-time Path），嵌入在可执行文件或共享库中的路径列表，用于运行时搜索动态库，查看方式
+[[id:84e6eb5b-1595-4b89-89b2-e5096b8f89ab][readelf]] -d <ELF格式文件> | grep RUNPATH
+
+
+* linux修改主机名（hostname） [[https://wiki.archlinux.org/title/Network_configuration#Set_the_hostname][参考]]
+在 /etc/hostname 中修改，如果使用 [[id:669a06c1-5af2-40bd-a102-51b0b5eeb23b][systemd]] 可以使用 hostnamectl 修改
+
+
+* tmp
+[[id:33898a6e-27dc-415b-8fe5-01c694f009ca][linux查看网卡是否开启省电模式]]
+[[id:bcc501dc-a36a-4804-8774-d16f583d3123][linux解压windows的zip压缩包乱码问题]]
+[[id:0d81ea57-8d67-4607-b331-85ed03d747fd][linux如何配置域名解析]]

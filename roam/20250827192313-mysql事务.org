@@ -63,11 +63,10 @@ MVCC保证读的时候看不到幻影；next-key lock保证写的时候造不出
 
 * MVCC
 ** MVCC简易版本
-多版本并发控制，用于解决可重复读隔离级别下快照读中的幻读问题
+多版本并发控制，用于解决 *可重复读* 隔离级别下 *快照读* 中的 *幻读* 问题
 1. *本质* ：每个事务读同一个数据，读到的是自己对应的历史版本，所以多个事务既能同时读，也能同时写，读写互不阻塞，实现数据库高并发
 2. 历史版本来自 undo log，一条记录与undo log串成一条版本链
-3. 当前事务能看到版本链的哪一个版本取决于 ReadView，它会记录哪些事务已提交，哪些事务还活跃
-   =->= 自己改的、比自己早提交的能看；还没提交的不能看
+3. 当前事务能看到版本链的哪一个版本取决于 ReadView，它会记录哪些事务已提交，哪些事务还没提交 =->= 自己改的、比自己早提交的能看；晚提交的不能看
 *读提交*   ：每次查询生成一个新的 ReadView -> 因此前后两次select结果可能不一样，因此不可重复读；具体示例见：[[https://xiaolincoding.com/mysql/transaction/mvcc.html#%E8%AF%BB%E6%8F%90%E4%BA%A4%E6%98%AF%E5%A6%82%E4%BD%95%E5%B7%A5%E4%BD%9C%E7%9A%84][小林coding]]
 *可重复读* ：启动事务时生成一个 Read View，整个事务期间都在用这个 ReadView；具体示例见：[[https://xiaolincoding.com/mysql/transaction/mvcc.html#%E5%8F%AF%E9%87%8D%E5%A4%8D%E8%AF%BB%E6%98%AF%E5%A6%82%E4%BD%95%E5%B7%A5%E4%BD%9C%E7%9A%84][小林coding]]
 

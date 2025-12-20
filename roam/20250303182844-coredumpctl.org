@@ -1,9 +1,0 @@
-:PROPERTIES:
-:ID:       68a8d733-e3fe-4793-9727-f8a80e1daaad
-:END:
-#+title: coredumpctl
-#+filetags: linux
-
-* coredumpctl
-1. [[id:669a06c1-5af2-40bd-a102-51b0b5eeb23b][systemd]] 中的工具；用于查看、管理 core dump文件
-2. 使用 coredumpctl list 查看 core dump文件，使用 coredumpctl debug 对 core dump文件 进行debug

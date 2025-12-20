@@ -2,14 +2,37 @@
 :ID:       bfd7b7bf-ea5d-45c4-ad33-6da35fbb0de7
 :END:
 #+title: vscode
-#+filetags: index
+#+filetags: vscode
 
 * vscode
-1. *root权限运行* vscode，但 *使用普通用户配置、扩展* ，见 [[id:09f51db8-5ce4-4089-8e18-c64d1601ed1c][vscode root权限运行但使用普通用户配置和扩展]]
-   vscode *普通用户配置位置、扩展插件位置*
-   | 路径                              | 说明     |
-   |-----------------------------------+----------|
-   | ~/.config/Code/User/settings.json | 用户配置 |
-   | ~/.vscode/extensions/             | 扩展插件 |
-2. 连接服务器后无法为 jupyter 选择内核，解决方法：[[id:13522bcf-1e56-4afb-9486-6adb8a9ed427][vscode连接远程后无法为jupyter选择内核]]
-3. [[id:717096c9-1ecb-480e-b4a0-93461bd2f722][vscode配置cpp开发环境]]
+** 开发环境配置
+[[id:717096c9-1ecb-480e-b4a0-93461bd2f722][vscode配置cpp开发环境]]
+[[id:0b7442a8-12cf-4091-a54e-a905e2647991][vscode配置python开发环境]]
+
+
+* vscode无法与远程服务器建立连接，不满足先决条件 [[https://zhuanlan.zhihu.com/p/1896247625663092615][知乎]] :远程:
+- 原因 :: 远程服务器的 GLIBC 版本过低，新版vscode GLIBC 版本较高
+- 解决 :: 下载 低版本vscode，以 Arch 为例，在 https://code.visualstudio.com/updates/v1_98 中选择 =tarball= 下载
+
+
+* vscode连接远程服务器 :远程:
+1. 下载 Remote - SSH 插件
+2. =命令面板 -> Remote-SSH：添加新的 SSH 主机= 添加主机后 =活动栏 -> 远程资源管理器 -> 连接=
+3. 遇到问题，打开 =命令面板 -> Remote-SSH：打开 SSH 配置文件= 查看
+
+
+* vscode连接远程后无法为jupyter选择内核 [[https://blog.csdn.net/jyk19991222/article/details/131486776][参考]] :远程:
+在远程服务器上重新安装 [[id:6a95d71e-f7ea-4258-bf08-62ce584d3842][jupyter]]
+
+
+* root权限运行 vscode 但使用普通用户配置和扩展
+#+begin_src bash
+sudo code --user-data-dir="$HOME/.config/Code" --extensions-dir="$HOME/.vscode/extensions" --no-sandbox
+# 只能使用$HOME，使用~不生效。原因未知
+#+end_src
+
+linux 中 vscode *普通用户配置位置、扩展插件位置*
+| 路径                              | 说明     |
+|-----------------------------------+----------|
+| ~/.config/Code/User/settings.json | 用户配置 |
+| ~/.vscode/extensions/             | 扩展插件 |

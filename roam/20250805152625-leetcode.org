@@ -5,20 +5,51 @@
 #+filetags: interview
 
 * 模板
+** 移动操作
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+int n = 10;
+// NOTE 此操作不会修改 n 的值（推荐）
+for (int i = 0; i < n; ++i)     // 执行 n 次
+for (int i = 0; i < n-1; ++i)   // 执行 n-1 次
+
+// HACK 此操作会修改 n 的值！！！！（后续代码若用到n，则易出现问题）
+while (n--)                     // 执行 n 次
+while (--n)                     // 执行 n-1 次
+#+end_src
+[[https://leetcode.cn/problems/remove-nth-node-from-end-of-list/description/][leetcode 19.删除链表的倒数第N个节点]]
+[[https://leetcode.cn/problems/reverse-linked-list-ii/description/][leetcode 92.反转链表II]]
+[[https://leetcode.cn/problems/reverse-nodes-in-k-group/description/][leetcode 25.K个一组翻转链表]]
+** 判断四象限
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+// 涵盖以下3种情况
+// 1. p空 q空
+// 2. p空 q不空
+// 3. p不空 q空
+if (p == nullptr || q == nullptr) {
+    return p == q;        // 1. p空 q空
+}
+
+// 4. p不空 q不空
+#+end_src
+[[https://leetcode.cn/problems/symmetric-tree/description/][leetcode 101.对称二叉树]]
+
 ** 快速排序
 #+begin_src cpp :results output :namespaces std :includes <iostream>
 void quick_sort(int q[], int l, int r) {
-  if (l > r) return;
+  if (l >= r) return;
   int i = l - 1, j = r + 1, x = q[l+r>>1];
   while (i < j) {
     do ++i; while (q[i] < x);
     do --j; while (q[j] > x);
+    if (i < j) swap(q[i], q[j]);
   }
   quick_sort(q, l, j), quick_sort(q, j+1, r);
 }
 #+end_src
-https://leetcode.cn/problems/xx4gT2/submissions/674729952/
+[[https://leetcode.cn/problems/sort-an-array/description/][leetcode 912.排序数组]]
+[[https://leetcode.cn/problems/kth-largest-element-in-an-array/description/][leetcode 215.数组中的第K个最大元素]]
 https://www.nowcoder.com/practice/e016ad9b7f0b45048c58a9f27ba618bf?tpId=295&tqId=44581&sourceUrl=%2Fexam%2Foj%3FquestionJobId%3D10%26subTabName%3Donline_coding_page
+
 ** 归并排序
 1. 找中间节点
 2. 分治
@@ -26,7 +57,7 @@ https://www.nowcoder.com/practice/e016ad9b7f0b45048c58a9f27ba618bf?tpId=295&tqId
 #+begin_src cpp :results output :namespaces std :includes <iostream>
 void merge_sort(int q[], int l, int r) {
    if (l >= r) return;
-   int mid = l+r>>1;
+   int mid = (l+r)>>1;
    merge_sort(q, l, mid), merge_sort(q, mid+1, r);
 
    int k = 0, i = l, j = mid + 1;
@@ -41,8 +72,82 @@ void merge_sort(int q[], int l, int r) {
 }
 #+end_src
 https://www.acwing.com/problem/content/789/
+
+** 二分查找
+#+name: 闭区间写法
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+int l = 0, r = nums.size()-1;
+while (l <= r) {
+  int mid = (l + r) >> 1;
+  if (/*满足某种性质*/) {
+    //...
+  } else {
+    //...
+  }
+ }
+#+end_src
+[[https://leetcode.cn/problems/search-in-rotated-sorted-array/description/][leetcode 33.搜索旋转排序数组]]
+[[https://leetcode.cn/problems/find-first-and-last-position-of-element-in-sorted-array/description/][leetcode 34.在排序数组中查找元素的第一个和最后一个位置]]
+
+** 定长滑动窗口
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+for (int l = 0, r = 0; r < n; ++r) {
+    /* 具体逻辑 */
+    if (r-l+1 == k) {/* 具体逻辑 */}
+    /* 具体逻辑 */
+ }
+#+end_src
+https://leetcode.cn/problems/maximum-number-of-vowels-in-a-substring-of-given-length/description/
+https://leetcode.cn/problems/find-all-anagrams-in-a-string/description/?envType=study-plan-v2&envId=top-100-liked
+
+** 不定长滑动窗口
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+for (int l = 0, r = 0; r < n; ++r) {
+    /* 具体逻辑 */
+    while (/* 具体逻辑 */) {/* 具体逻辑 */}
+    /* 具体逻辑 */
+ }
+#+end_src
+https://leetcode.cn/problems/longest-substring-without-repeating-characters/description/?envType=study-plan-v2&envId=top-100-liked
+
+** 前缀和
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+// NOTE 计算前缀和
+// NOTE s[0] = 0
+for (int i = 0; i < nums.size(); ++i) s[i+1] = s[i] + nums[i];
+
+// NOTE 计算子数组和：下标l到r的子数组和
+s[r+1] - s[l]
+#+end_src
+[[https://leetcode.cn/problems/range-sum-query-immutable/description/][leetcode 303.区域和检索]]
+[[https://leetcode.cn/problems/maximum-subarray/description/][leetcode 53.最大子数组和]]
+https://www.acwing.com/problem/content/description/797/
+
+*** 推导
+数组a[n]
+前缀和数组s[i]定义为数组a[i]之前数的和：a[0] + a[1] + ... + a[i-1]
+s[i+1] = s[i] + a[i]
+计算子数组和：下标l到r的子数组和
+s[r+1] - s[l]
+** 二维矩阵
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+const int DIRS[4][2] = {{0,1},{1,0},{0,-1},{-1,0}}; // 4个方向
+int di = 0;                                         // 当前方向
+
+int i = 0, j = 0;                                   // 当前位置
+int x = i + DIRS[di][0];                            // 横坐标下一步
+int y = j + DIRS[di][1];                            // 纵坐标下一步
+
+if (x < 0 || x >= m || y < 0 || y >= n || matrix[x][y] == INT_MAX) {  // 判断是否越界
+  di = (di + 1) % 4;                                // 变向
+}
+#+end_src
+[[https://leetcode.cn/problems/spiral-matrix/description/][leetcode 54.螺旋矩阵]]
+
 ** 链表中间节点
 #+begin_src cpp :results output :namespaces std :includes <iostream>
+// 奇数返回中间节点；偶数返回中间右边节点
+// 无需头节点
 ListNode* middleNode(ListNode* head) {
    ListNode *f = head, *s = head;
    while (f && f->next) {
@@ -52,8 +157,12 @@ ListNode* middleNode(ListNode* head) {
    return s;
 }
 #+end_src
+[[https://leetcode.cn/problems/reorder-list/description/][leetcode 143.重排链表]]
+[[https://leetcode.cn/problems/middle-of-the-linked-list/description/][leetcode 876.链表的中间节点]]
+
 ** 链表反转
 #+begin_src cpp :results output :namespaces std :includes <iostream>
+/* 无需头节点 */
 class Solution {
 public:
     ListNode* reverseList(ListNode* head) {
@@ -68,6 +177,9 @@ public:
     }
 };
 #+end_src
+[[https://leetcode.cn/problems/reorder-list/description/][leetcode 143.重排链表]]
+[[https://leetcode.cn/problems/reverse-linked-list/description/][leetcode 206.反转链表]]
+
 ** 链表两数相加
 #+begin_src cpp :results output :namespaces std :includes <iostream>
 ListNode* addTwo(ListNode* l1, ListNode* l2) {
@@ -89,44 +201,87 @@ ListNode* addTwo(ListNode* l1, ListNode* l2) {
     return dummy->next;
 }
 #+end_src
+
 ** 合并有序链表
 #+begin_src cpp :results output :namespaces std :includes <iostream>
-ListNode* mergeTwoLists(ListNode* list1, ListNode* list2) {
+ListNode* mergeTwoLists(ListNode* l1, ListNode* l2) {
     ListNode* dummy, *cur = dummy;
-    while (list1 && list2) {
-        if (list1->val < list2->val) {
-            cur->next = list1;
-            list1 = list1->next;
+    while (l1 && l2) {
+        if (l1->val < l2->val) {
+            cur->next = l1;
+            l1 = l1->next;
         } else {
-            cur->next = list2;
-            list2 = list2->next;
+            cur->next = l2;
+            l2 = l2->next;
         }
         cur = cur->next;
     }
-    cur->next = list1 ? list1 : list2;
+    cur->next = l1 ? l1 : l2;
     return dummy.next;
 
 #+end_src
-** 二分查找
-闭区间写法
+https://leetcode.cn/problems/merge-two-sorted-lists/description/
+** [[https://www.bilibili.com/video/BV17o4y187h1/?vd_source=4441bc96046659b39d059d583f36ff52][树形DP]]
+#+name: 104.二叉树的最大深度 [这是很多题的基础！]
 #+begin_src cpp :results output :namespaces std :includes <iostream>
-int left = 0, right = nums.size()-1;
-while (left <= right) {
-  int mid = left + right >> 1;
-  if (/*满足某种性质*/) {
-    //...
-  } else {
-    //...
-  }
- }
+/* NOTE 树形DP：原问题拆解为多个子问题，找到原问题和子问题之间的关系 */
+class Solution {
+public:
+    int maxDepth(TreeNode* root) {     // 原问题 ：以当前节点为根的二叉树的最大深度
+       if (root == nullptr) return 0;
+       int l = maxDepth(root->left);   // 子问题1：左子树的最大深度
+       int r = maxDepth(root->right);  // 子问题2：右子树的最大深度
+       return max(l, r) + 1;           // 原问题和子问题的关系：原问题 = max(子问题1，子问题2) + 1
+    }
+};
 #+end_src
-** 二叉树最大深度
+
+#+name: 543.二叉树的直径
 #+begin_src cpp :results output :namespaces std :includes <iostream>
-int depthTree(TreeNode* root) {
-  if (!root) return 0;
-  return 1 + max(depthTree(root->left), depthTree(root->right));
+class Solution {
+public:
+    int diameterOfBinaryTree(TreeNode* root) {
+        int ans = 0;
+
+        function<int(TreeNode*)> dfs = [&](TreeNode* root) {
+            /* 104.二叉树的最大深度 */
+            if (root == nullptr) {
+                return 0;
+            }
+
+            /* 枚举当前节点，更新状态 */
+            int l = dfs(root->left);
+            int r = dfs(root->right);
+            ans = max(ans, l+r);
+
+            /* 104.二叉树的最大深度 */
+            return max(l, r) + 1;
+        };
+
+        dfs(root);
+        return ans;
+    }
+};
+#+end_src
+[[https://leetcode.cn/problems/maximum-depth-of-binary-tree/description/][leetcode 104.二叉树的最大深度]]
+[[https://leetcode.cn/problems/diameter-of-binary-tree/description/][leetcode 543.二叉树的直径]]
+[[https://leetcode.cn/problems/binary-tree-maximum-path-sum/description/][leetcode 124.二叉树中的最大路径和]]
+
+** 用栈模拟二叉树的前/中序遍历
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+vector<int> traversal(TreeNode* root) {
+  stack<TreeNode*> st;
+  while (root || !st.empty()) {     // 表示当前还有节点需要处理（节点存在或栈非空）
+    while (root) {
+      // 节点入栈，向左遍历相关逻辑
+    }
+    // 节点出栈，向右遍历相关逻辑
+  }
 }
 #+end_src
+[[https://leetcode.cn/problems/binary-tree-preorder-traversal/description/][leetcode 144.二叉树的前序遍历]]
+[[https://leetcode.cn/problems/binary-tree-inorder-traversal/description/][leetcode 94.二叉树的中序遍历]]
+
 ** 字符串拆分
 #+name: 版本1
 #+begin_src cpp :results output :namespaces std :includes <iostream>
@@ -159,6 +314,7 @@ vector<string> str_split(string s) {
 }
 #+end_src
 https://leetcode.cn/problems/fan-zhuan-dan-ci-shun-xu-lcof/description/
+
 ** 合并区间
 1. 将区间按左端点排序
 2. 合并区间
@@ -186,7 +342,7 @@ void merge(vector<PII> &segs)
 #+end_src
 https://www.acwing.com/problem/content/805/
 https://www.nowcoder.com/practice/69f4e5b7ad284a478777cb2a17fb5e6a?tpId=295&tqId=691&sourceUrl=%2Fexam%2Foj%3FquestionJobId%3D10%26subTabName%3Donline_coding_page
-** 双指针
+** TODO 双指针
 1. 暴力写法
 2. 看有没有单调性，然后优化暴力写法
 #+begin_src cpp :results output :namespaces std :includes <iostream>
@@ -230,15 +386,71 @@ void backtrack(参数列表) {
 #+begin_src cpp :results output :namespaces std :includes <iostream>
 
 #+end_src
+** BFS
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+void bfs(TreeNode* root) {
+  queue<TreeNode*> q;                     // 1. 队列
+  q.push(root);                           // 2. 放入第1个节点
+  while (!q.empty()) {                    // 3. 队列不空时循环
+    auto node = q.front();                // 4. 取出节点进行处理
+    /* 对节点具体处理逻辑 */
+    if (node->left) q.push(node->left);   // 5. 将左右孩子加入队列
+    if (node->right) q.push(node->right);
+    q.pop();                              // 6. 弹出节点
+  }
+}
+#+end_src
+[[https://leetcode.cn/problems/binary-tree-level-order-traversal/description/][leetcode 102.二叉树的层序遍历]]
+[[https://leetcode.cn/problems/maximum-width-of-binary-tree/description/][leetcode 662.二叉树最大宽度]]
+[[https://leetcode.cn/problems/check-completeness-of-a-binary-tree/description/][leetcode 958.二叉树的完全性检验]]
+
+** ---------------------
+** 数组模拟单链表
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+// e[] 存储节点值，ne[] 存储节点的next指针，head存储链表头，idx表示当前用到哪个节点
+int e[N], ne[N], head, idx;
+
+// 初始化
+void init() {
+  head = -1;
+  idx = 0;
+}
+
+// 在链表头插入数字x
+void add_to_head(int x) {
+  e[idx] = x, ne[idx] = head, head = idx++;
+}
+
+// 将x插到下标k的点后面
+void add(int k, int x) {
+  e[idx] = x, ne[idx] = ne[k], ne[k] = idx++;
+}
+
+// 删除头节点（需保证头节点存在）
+void remove_head() {
+  head = ne[head];
+}
+
+// 删除下标k的点
+void remove(int k) {
+  ne[k] = ne[ne[k]];
+}
+#+end_src
+https://www.acwing.com/problem/content/828/
 
 
-* 数组
+* tmp
+** 递归理解
+1. 将 原问题 拆解为多个 子问题
+2. 找到 原问题和子问题的关系
+
+** 数组
 1. 二分查找
 2. 双指针法
 3. 滑动窗口
 4. 前缀和
 
-** 二分查找（红蓝染色法）
+*** 二分查找（红蓝染色法）
 while循环条件表示 *处理数据的范围区间* ：闭区间、开区间、左开右闭、左闭右开
 #+begin_example cpp
 /* 闭区间 -> 要处理的数据范围：[left, right] */
@@ -260,36 +472,25 @@ while(left + 1 < right)  // left + 1 < right 时，剩3数据 （left, xxx, righ
 *根据while中的if语句确定红蓝区意义*
 # 红蓝区的意义可以是红色为<target的范围，蓝色为>target的范围；也可以是其他意义，eg：162.寻找峰值中红色代表有序部分，蓝色代表无序部分
 
-*** 图:闭区间红蓝染色法终止时 :ATTACH:
+**** 图:闭区间红蓝染色法终止时 :ATTACH:
 :PROPERTIES:
 :ID:       25a5a2b9-8187-4a0c-be39-14a25661e8c8
 :END:
 [[attachment:_20250812_161917screenshot.png]]
 
 
-** 快慢双指针
-同向，fast 移动 2，slow 移动 1
-
-*应用场景* ：找链表中点、判断链表是否有环
-
-** 相向双指针
+*** 相向双指针
 - 通过两个指针(索引)获取一定信息（eg：在两数之和中，这个信息就是两个指针的值与target的比较），根据信息结果，缩小处理数据范围 => 高效
 - 一般情况下数据 *满足单调性(有序)* ，定义两个指针(索引)在两侧，相向移动
 
-** 定长滑动窗口
-假设窗口大小为k
-核心思想：入- 更新- 出
-入：right元素进入，判断窗口是否为k（left = right -k + 1，因此left < 0代表left不存在，那么窗口大小就不为k了），没到k，继续入
-更新：窗口大小为k，更新
-出：left出去
 
-** 不定长滑动窗口
+*** 不定长滑动窗口
 入 [出] 更新
 right入；若不符合条件了，left出；更新
 - 题目说求子数组或子串，意味着数据 *不满足单调性* ，不使用双指针，只能使用滑动窗口；一般不定长滑动窗口是根据某种状态来移动左右窗口边界，比如求窗口内元素和为某个值，若数据中有负数，则不可使用，因为此时左边界会往左走，只能使用前缀和
 
 
-** 前缀和
+*** 前缀和
 *推导*
 数组为nums
 前缀和数组为s，s[0]=0
@@ -321,7 +522,7 @@ nums[i] = s[i] - s[i-1]  ->  任何子序列的和都可以表示为两个前缀
 *应用场景*
 连续子数组和（滑动窗口不适合的原因：不满足单调性，比如包含进来的新元素是负数，则会移动窗口左边界）
 
-** 前后缀分解
+*** 前后缀分解
 pre[0] = suf[n-1] = 1（表示空子数组的元素乘积，1乘任何数都是本身）
 
 pre[i] = nums[0] * ... * nums[i-1]  （i前所有数的乘积）
@@ -335,17 +536,7 @@ suf[i] = suf[i+1] * nums[i+1]
 answer[i] = pre[i] * suf[i]
 
 
-* 链表
-1. 虚拟头节点
-2. 增删改查
-3. 反转链表
-4. 删除倒数第N个节点
-5. 链表相交
-6. 环形链表
-
-
-
-* 哈希表
+** 哈希表
 用于快速判断一个元素是否出现在集合中
 1. 数组
 2. set（集合）
@@ -356,11 +547,10 @@ answer[i] = pre[i] * suf[i]
 - map ：大小不受限，需要 key-value 的场景；占用空间大于数组，速度慢于数组（将值映射到key需要做hash计算）
 #+end_comment
 
-
-* 桶排序
+** 桶排序
 适合元素分布均匀的情况，最好时间复杂度O(n)（数据分布均匀），最坏O(n^2)（数据分布极度不均匀）
 *使用场景* ：找第k高频元素、找前k个高频元素
-* 位运算 [fn:1]
+** 位运算 [fn:1]
 与（&）   ：对应位都为1，则为1
 或（|）   ：对应位有一个为1，则为1
 异或（^） ：对应位不同，则为1
@@ -368,7 +558,7 @@ answer[i] = pre[i] * suf[i]
 左移（<<）：各二进制左移，高位丢弃，低位补0
 右移（>>）：各二进制右移，低位丢弃，高位补符号位
 
-* 回溯
+** 回溯
 *两种解法* ：
 1. 选哪个  （N 叉树）
 2. 选或不选（二叉树）
@@ -387,33 +577,32 @@ answer[i] = pre[i] * suf[i]
 
 *剪枝* ：通过条件判断，减少某些递归调用
 
-* 反转链表
+** 反转链表
 - 设置哨兵节点dummy统一操作；pre、cur、nxt三个指针(cur用于反转指向，nxt只用于定位！)
 - 最终状态
   1. pre在反转区域的最后一个位置
   2. cur在反转区域的下一个位置
-* 递归
+** 递归
 # 循环和递归都是在调用同一份代码，通过不断解决小问题从而解决原问题，区别在于循环的每次循环就是提出小问题就解决，递归每次调用自身就是将原问题拆解为小问题(递)，返回时解决小问题(归)，因为递归解决的是嵌套 问题；在返回值方面，循环每次将值返回到当前问题，递归将值返回给上一个问题；再说一些两者类似的地方，递归的边界条件类似循环中的条件判断，不同之处在于循环每次提出小问题就判断一次，递归到最小问题时才进行判断，递归每次调用自身就类似循环每次进入下一次循环；通过循环来理解递归更容易
 *递归之间的信息传递* ：自底向上、自顶向下
-* 二叉树 递归
+** 二叉树 递归
 - 两种方法：
   1. 递归的时候传入节点                             => 通过归的值得到结果
   2. 递归的时候传入节点、其他变量；同时存在全局变量 => 不断更新全局变量，全局变量的值即为结果
-* 二叉树 最大深度 相同 对称 平衡
+** 二叉树 最大深度 相同 对称 平衡
 # 二叉树的解法，函数式编程，假设知道某些基础算法，在那些算法基础上解题
 - 对称 :: 使用 *相同的变体* 来判断
 - 平衡 :: 使用 *最大深度* 来判断
-* 二叉树 右视图
+** 二叉树 右视图
 - 先右后左(右边遮蔽左边)，比较当前深度和当前整棵树最大深度(结果数组的长度)，若相等(意味着第一次到达这个深度)，则加入结果数组
-* 二叉搜索树判别
+** 二叉搜索树判别
 - 核心思想：二叉搜索树，进入root->left缩小范围右边界为root值，进入root->right缩小范围左边界为root值；root的范围应该是无限小和无限大
 - 中序遍历得到递增序列
-* 二叉树层序遍历
+** 二叉树层序遍历
 - 使用队列：队列相当于是工作队列(里面有工作就取出完成，否则中止 => 以此判断终止条件)
 
 
-
-* 动态规划
+** 动态规划
 *两种解法*
 1. 选或不选
 2. 选哪个
@@ -431,25 +620,24 @@ answer[i] = pre[i] * suf[i]
 2. 根据这个方程很容易想到用 *递归* ；有些节点重复计算，考虑放到一个"缓存"中，遇到直接返回"缓存"中的结果，这就是 *记忆化搜索*
 3. 递归去掉"递"的过程，只保留"归"，即自底向上计算，这就是 *递推*
 
-
-* 动态规划
+** 动态规划
 - 将 记忆化搜索 翻译成 递推
   1. dfs      -> f数组
   2. 递归     -> 循环
   3. 递归边界 -> 数组初始值
 - 自底向上(递推：只有递没有归) 计算 搜索树
 
-* 历史信息
-** 变量
+** 历史信息
+*** 变量
 获取历史信息（最大值，最小值）
-** int数组
+*** int数组
 用于获取历史信息（特别适合存放char，因为char对应[[id:dfb83e03-e939-4a01-87b5-54aaa92fd424][ASCII]]中的数字，使得我们可以通过数学计算来获取关系）
-** 哈希表
+*** 哈希表
 用于快速获取历史信息（是否存在、key-value附加信息）
-** 单调栈
+*** 单调栈
 用于获取上一个值的历史信息（上一个最大/最小）
 - 单调性：栈上面的数<栈下面的数(记录t[i]前会把所有<=t[i]的数去掉)
-** 单调队列
+*** 单调队列
 用于获取一个范围内的历史信息（范围内最大/最小）
 1. 右边入（同时维护单调性）
 2. 左边出
