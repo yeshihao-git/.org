@@ -2,18 +2,265 @@
 :ID:       52880cac-b451-4efc-bf87-3edde817eb06
 :END:
 #+title: git
-#+filetags: git
+#+filetags: cli
 
 * git
+用于版本管理的命令行工具，包含四个重要的区域：
+1. 工作区（Working Directory）
+2. 索引（Index）
+3. 仓库（HEAD）
+4. 远程仓库
 
+** 快速开始
+#+name: 终端中查看帮助
+#+begin_src bash
+git                  # 列出帮助
+git <命令> -h        # 命令相关帮助 eg：git clone -h
+git help <命令/概念> # 更详细的命令相关帮助
+#+end_src
 
-* tmp
-1. git 是用于版本管理的工具，常见操作见 [[id:3eb41807-bf67-46de-a1d1-93fcb85e3038][git table]]；
-2. git 有三个重要的区域：工作区（Working Directory）、暂存区（Index）、版本区（HEAD指向某个版本）；分离的HEAD 是指 HEAD 指向某个 commit 而不是某个分支的最后一次提交
-3. git相关的配置文件见 [[id:87c46680-515a-4b58-b0f2-b606612a1554][git配置文件]]，可以查看用户名、密码、代理，忽略跟踪的文件，子模块的配置等
-4. 我们可以通过设置 .gitignore 来忽略跟踪的文件，语法参见 [[id:b81be949-f943-4014-9279-8be45497efbb][.gitignore语法]]；若发现 .gitignore 不生效，查看 [[id:a8270354-11ea-4b5c-ae42-87170cd68368][.gitignore不生效解决方法]]；
-5. 有时候我们会发现 git 很慢，这时候设置 [[id:54642b64-644b-4f5a-977f-572f75973445][git走代理]]、[[id:8158c722-f1e3-4838-adfa-dfacfdcd6af4][加速git clone的几种方法]]
-6. 团队协作开发时，需要注意 [[id:dea94665-71ca-4e52-8b7d-919346648bc6][git branch规范]]、[[id:2eb9155c-17e3-4718-b254-70041a1966d1][git commit规范]]；
-7. 可以使用 git diff 查看文件差异，查看 [[id:4e6206ae-df01-4811-8ffe-8c49689169b5][git diff信息详解]]；有时候觉得 commit 太乱，可以使用 [[id:56824225-cc55-48c5-80f7-f1ad0e482bc1][git rebase修改任意commit的提交信息]]；希望抛弃本地的 commit历史，使用远程仓库的，见 [[id:debf2c17-65b9-4c91-b1a6-aba928b39e34][git远程commit覆盖本地commit]]；误删除分支时，恢复方法见 [[id:9f6c2633-9c36-41ab-98eb-12ebf9ca1757][git恢复误删除的分支]]；对于有子模块的git项目，我们希望部分更新子模块，见 [[id:c25f42e9-0361-4966-a1b5-e0f18a4adf45][git submodule update更新部分子模块]]
-8. 在 emacs 中，有个好用的git客户端 [[id:c492f05c-da8f-4eff-98a4-4b68f90e36fb][magit]]
+** git远程仓库commit覆盖本地commit
+:PROPERTIES:
+:ID:       9c1daf3a-a9bf-4eb2-926b-30c27146bde4
+:END:
+#+begin_example bash
+git fetch
+git reset --hard origin/main
+#+end_example
+
+** git撤销工作区的修改
+:PROPERTIES:
+:ID:       f35aa758-9cda-4c26-b52d-5c8ce5630d17
+:END:
+#+begin_example bash
+# 现代 git
+git restore .              # 撤销所有修改
+git restore <文件名>       # 撤销指定文件修改
+
+# 古代 git
+git checkout -- .          # 撤销所有修改
+git checkout -- <文件名>   # 撤销指定文件修改
+#+end_example
+
+** git解决ssh: connect to host github.com port 22: Connection timed out [[https://stackoverflow.com/questions/15589682/how-to-fix-ssh-connect-to-host-github-com-port-22-connection-timed-out-for-g][stackoverflow]]
+:PROPERTIES:
+:ID:       493af9b0-a22d-46d5-b150-22d964eb611d
+:END:
+1. 在 =~/.shh/config= 中写入以下内容
+#+begin_comment
+Host github.com
+ Hostname ssh.github.com
+ Port 443
+#+end_comment
+2. =ssh -T git@github.com= 测试是否成功
+
+** git push密码认证失效
+:PROPERTIES:
+:ID:       a393e20b-b335-4f6b-b97d-f221c59281e1
+:END:
+*解决*
+1. 生成 公钥密钥：见 [[id:8960414f-9362-4c3b-ae24-baadd30238e2][git配置SSH key]]
+2. 设置推拉方式为 SSH：
+#+begin_example bash
+git remote set-url  origin git@github.com:diablorrr/MIG-GT.git
+#+end_example
+*原因*
+github 在 2021.8.13 移除了对账号密码认证的支持；因此无法使用帐号密码通过 HTTPS 推送代码
+*问题复现*
+出现了要求输入 账号密码 的提示
+#+begin_src bash
+root@autodl-container-92714881b1-6850edac:~/autodl-tmp/MIG-GT# git push --set-upstream origin matplotlib
+Username for 'https://github.com': diablorrr
+Password for 'https://diablorrr@github.com':
+remote: Support for password authentication was removed on August 13, 2021.
+remote: Please see https://docs.github.com/get-started/getting-started-with-git/about-remote-repositories#cloning-with-https-urls for information on currently recommended modes of authentication.
+fatal: Authentication failed for 'https://github.com/diablorrr/MIG-GT.git/'
+#+end_src
+查看发现 推拉 走的 HTTPS方式
+#+begin_src bash
+root@autodl-container-92714881b1-6850edac:~/autodl-tmp/MIG-GT# git remote -v
+origin  https://github.com/diablorrr/MIG-GT.git (fetch)
+origin  https://github.com/diablorrr/MIG-GT.git (push)
+#+end_src
+
+** git配置SSH key
+:PROPERTIES:
+:ID:       8960414f-9362-4c3b-ae24-baadd30238e2
+:END:
+#+begin_example bash
+ssh-keygen -t rsa -C "1299331829@qq.com" # 生成 SSH key 到 ~/.ssh
+# 复制 id_rsa.pub 中的内容到 github/Settings/SSH and GPG keys
+#+end_example
+
+** git rebase修改任意commit的提交信息
+:PROPERTIES:
+:ID:       c85409d6-fd86-40ce-a308-abb13e718f70
+:END:
+#+begin_example bash
+git rebase -i --root
+# 选择commit，更改 pick 为 reword，保存退出
+# 修改commit，保存退出
+#+end_example
+
+** git恢复误删除的分支
+:PROPERTIES:
+:ID:       7c544a34-98da-4c6a-8629-28a47ec81fa3
+:END:
+#+begin_example bash
+git reflog
+git checkout -b <lost-branch> <commit-id>
+#+end_example
+
+** git报错:The TLS connection was non-properly terminated [[https://blog.csdn.net/qq_42921511/article/details/120551306][csdn]]
+:PROPERTIES:
+:ID:       d2aec936-08b5-49dd-9425-2e830432b7a4
+:END:
+*报错信息*
+fatal: unable to access 'https://github.com/CMU-Perceptual-Computing-Lab/openpose.git/': gnutls_handshake() failed: The TLS connection was non-properly terminated.
+*解决*
+1. 权限不足，用 sudo：
+#+begin_example bash
+sudo git clone ...
+#+end_example
+2. 取消代理：
+#+begin_example bash
+git config --global --unset http.proxy
+git config --global --unset https.proxy
+#+end_example
+
+** git走代理
+:PROPERTIES:
+:ID:       b0832b1d-68af-40c6-999e-a1c4a5e239a9
+:END:
+git不会自动继承系统环境变量（[[id:49d53854-7e0a-462b-9397-d54f3a08f559][linux终端走代理]]），需要单独设置git代理，这里设置的[[id:da1793e1-7a54-4f82-82b4-68c7acfb6d25][git用户级配置]]
+#+begin_src bash
+git config --global http.proxy "http://127.0.0.1:7890"   # 设置http代理
+git config --global https.proxy "http://127.0.0.1:7890"  # 设置https代理
+git config --global --list                               # 检查是否设置成功
+#+end_src
+
+** git clone加速
+:PROPERTIES:
+:ID:       12331e72-037e-4859-8ab4-7206d4d965b2
+:END:
+*方法1* ：[[id:b0832b1d-68af-40c6-999e-a1c4a5e239a9][git走代理]]
+
+*方法2* ：gitee镜像
+#+begin_example bash
+# Gitee极速下载 中查看是否有自己需要的库
+git clone https://gitee.com/mirrors/仓库名.git
+#+end_example
+
+*方法3* ：gitee中转
+1. gitee右上角 => 从github/gitlab导入仓库
+2. 复制github仓库地址
+
+*方法4* ：嵌入gitclone.com
+#+begin_example bash
+git clone https://gitclone.com/github.com/pzl/oa1.git # 嵌入后
+git clone https://github.com/pzl/oa1.git              # 嵌入前
+#+end_example
+
+** git commit规范 [[https://feflowjs.com/zh/guide/rule-git-commit.html][参考]]
+:PROPERTIES:
+:ID:       ce652c4c-5b04-4c31-84e3-5e02f8971e58
+:END:
+#+begin_example bash
+<commit类型>[<commit涉及范围>]: <commit简短描述>
+
+<body>
+
+<footer>
+#+end_example
+
+#+name: commit类型
+|----------+----------------------------------------------------|
+| feat     | 新增 feature(新功能)                               |
+| fix      | 修复 bug                                           |
+| docs     | 仅仅修改了文档                                     |
+| style    | 仅仅修改了空格、格式缩进、逗号等等，不改变代码逻辑 |
+| refactor | 代码重构，没有 加新功能或者 修复 bug 的代码变动    |
+| perf     | 优化相关，比如提升性能、体验                       |
+| test     | 增加 测试用例                                      |
+| chore    | 构建工具或辅助工具的变动                           |
+| revert   | 回滚到上一个版本                                   |
+| merge    | 代码合并                                           |
+| sync     | 同步主线或分支的bug                                |
+|----------+----------------------------------------------------|
+
+** git branch规范
+:PROPERTIES:
+:ID:       77e20db2-c0e8-47a1-b15c-bcaece833727
+:END:
+|----------------------+----------------+--------------------------------------------------------------------------------------------|
+| 分类                 | 分支           | 作用                                                                                       |
+|----------------------+----------------+--------------------------------------------------------------------------------------------|
+| 长期分支             | master         | (主分支)  上线版本， *hotfix分支从该分支创建*                                                |
+|                      | develop        | (开发分支)  相对稳定版本， *feature分支、bugfix分支、release分支都从该分支创建*              |
+|----------------------+----------------+--------------------------------------------------------------------------------------------|
+| 短期分支             | feature/分支名 | (功能分支) 开发自测后，合并到develop分支，删除该分支                                       |
+| (完成功能开发后删除) | bugfix/分支名  | (bug修复分支) 用于修复不紧急的bug，从develop创建，开发自测后，合并到develop后，删除该分支  |
+|                      | release/分支名 | (预发布分支) 从develop创建，发布到测试环境测试，发现bug修复后，合并到master和develop，上线 |
+|                      | hotfix/分支名  | (紧急bug修复分支) 从master分支创建，用于紧急修复线上bug，修复后，合并到master和develop     |
+|----------------------+----------------+--------------------------------------------------------------------------------------------|
+
+** git diff信息详解
+#+begin_example bash
+1 diff --git a/test b/test           # 表示git正在比较两个文件
+2 index a199eb7..1961728 100644      # git对象哈希值和文件权限：100普通文件，644权限644
+3 --- a/test                         # 修改前文件
+4 +++ b/test                         # 修改后文件
+5 @@ -1,2 +1,2 @@                    # -1,2：旧文件第1行开始2行内容 +1,2：新文件第1行开始3行内容
+6  happy1
+7 -happy1                            # - 代表删除内容
+8 +ysh                               # + 代表新增内容
+#+end_example
+
+** .gitignore语法
+:PROPERTIES:
+:ID:       2f91a49f-19e1-445c-8d9c-1d17be1c8d4a
+:END:
+#+begin_example bash
+*.txt  ，*.xls                 # 忽略某种类型的文件
+*.[ab]                         # 通配符方式过滤：过滤所有以.a或.b扩展名的文件
+target/                        # 忽略文件夹下的所有文件
+#+end_example
+|------+--------------------------------|
+| 符号 | 作用                           |
+|------+--------------------------------|
+| #    | 注释                           |
+| /    | 目录                           |
+| *    | 通配多个字符                   |
+| ?    | 通配单个字符                   |
+| []   | 单个字符匹配列表               |
+| !    | 不忽略(跟踪)匹配到的文件或目录 |
+|------+--------------------------------|
+
+** .gitignore不生效
+:PROPERTIES:
+:ID:       41d244d0-83dc-4e54-b8fd-52a8c5334510
+:END:
+- 原因 :: 只能忽略还没跟踪的文件，已经被纳入版本管理，修改.gitignore无效
+- 解决 ::
+#+name: 解决 - 删除本地缓存（文件变成未跟踪状态），重新提交
+#+begin_src bash
+git rm -r --cached .
+git add .
+git commit
+#+end_src
+
+** git配置文件
+:PROPERTIES:
+:ID:       da1793e1-7a54-4f82-82b4-68c7acfb6d25
+:END:
+|------------------------+------------------------------+----------------------------|
+| 配置文件               | 作用                         | 查询方法                   |
+|------------------------+------------------------------+----------------------------|
+| /etc/gitconfig         | git系统级配置                | git config --system --list |
+| ~/.gitconfig           | git用户级配置                | git config --global --list |
+| <仓库路径>/.git/config | git仓库级配置                | git config --local --list  |
+|------------------------+------------------------------+----------------------------|
+| .gitignore             | 配置git忽略跟踪的文件/文件夹 |                            |
+| .gitmodules            | 配置git各个子模块的仓库地址  |                            |
+|------------------------+------------------------------+----------------------------|
 

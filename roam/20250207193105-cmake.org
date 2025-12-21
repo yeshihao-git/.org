@@ -2,10 +2,10 @@
 :ID:       c651b8b0-bc76-451d-acac-0ea55329f0e8
 :END:
 #+title: cmake
-#+filetags: cmake
+#+filetags: cli
 
 * cmake
-*跨平台的构建配置工具* ，四个如下
+*跨平台的构建配置工具* ，四个阶段如下
 - 配置阶段 ::
   获取：
   1. 环境信息（系统架构、编译器、链接器、存档打包器）

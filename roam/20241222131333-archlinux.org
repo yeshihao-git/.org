@@ -7,6 +7,73 @@
 * arch
 [[id:ec7aef91-2628-4ba9-b300-16652314877f][linux]]的一个发行版；使用 systemd 作为默认的 init系统 与 服务管理器；pacman 作为默认的包管理器
 
+** arch linux安装向日葵
+:PROPERTIES:
+:ID:       62661967-ea04-42e8-ad6e-94455d5cc65d
+:END:
+#+begin_src bash
+yay -S sunloginclient
+sudo systemctl start runsunloginclient.service
+sudo systemctl enable runsunloginclient.service
+#+end_src
+
+** arch linux终端musicfox播放音乐时无法使用耳机播放 [[https://github.com/go-musicfox/go-musicfox/issues/348][参考]]
+:PROPERTIES:
+:ID:       e96c5fd0-b5fd-49c5-b417-d0a2cdf8214d
+:END:
+#+begin_src bash
+pacman -S pipewire-alsa
+#+end_src
+
+** arch设置中文环境 [[https://wiki.archlinuxcn.org/wiki/%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87%E6%9C%AC%E5%9C%B0%E5%8C%96][archwiki]]
+:PROPERTIES:
+:ID:       aef7f7a8-1769-4493-a5af-71e81fdd19c6
+:END:
+1. 生成语言包
+   #+begin_src bash
+   sudo vim /etc/locale.gen
+   # 取消 zh_CN.UTF-8 UTF-8 前的注释
+   sudo locale-gen # 生成语言包
+   #+end_src
+2. 设置 LANG 环境变量（可能出现终端豆腐块问题，解决见 wiki）
+   #+begin_src bash
+   sudo vim /etc/locale.conf
+   LANG=zh_CN.UTF-8
+   #+end_src
+3. reboot
+
+** arch安装linux-zen内核
+:PROPERTIES:
+:ID:       0a676403-2036-4796-aa2b-cf5f423725b8
+:END:
+#+begin_src bash
+sudo pacman -S linux-zen linux-zen-headers # 安装 linux-zen
+sudo grub-mkconfig -o /boot/grub/grub.cfg  # 更新引导加载程序
+reboot
+# 引导菜单 -> 高级菜单 -> linux-zen
+# 验证内核：uname -r
+#+end_src
+
+** 安装arch linux
+:PROPERTIES:
+:ID:       54f0fc20-1210-4a8f-9302-fa20f48e778a
+:END:
+1. 下载官方镜像，将官方镜像烧录到 U盘 中（win中推荐使用Rufus），此时 U盘 中就有一个完整的 arch linux live系统
+2. live系统可以理解为临时的系统，因为当我们将 U盘 插入主机中的时候，在 固件（BIOS、UEFI）中选择从 usb启动 就会将 U盘 中的完整 arch linux live系统 加载到内存中运行
+3. 然后使用 chroot 切换根目录到主机的硬盘中，就能在主机的硬盘中进行各种操作了
+4. arch linux 不支持 Secure Boot，UEFI 默认启动 Secure Boot，因此我们需要在主板中将其关闭
+5. 关闭 windows 的快速启动和休眠；方法见： [[id:73f9ea05-2107-4089-9d93-49a4afa9b8ae][windows关闭快速启动和休眠]]
+
+** arch linux管理java jdk
+:PROPERTIES:
+:ID:       8b071178-f17a-460f-b913-9f6bed59b4c7
+:END:
+archlinux-java 用于管理和切换系统中已安装的java版本
+#+begin_example bash
+archlinux-java status                      # 查看所有jdk版本
+sudo archlinux-java set <java-environment> # 设置java的jdk版本
+#+end_example
+
 
 * pacman
 :PROPERTIES:
