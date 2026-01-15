@@ -2,16 +2,28 @@
 :ID:       bbbe3cbf-20d3-49c7-b3cb-23f8153ca1dd
 :END:
 #+title: clash
+#+filetags: tools
 
-* 查询
-** 配置
-| 路径            | 作用     |
-|-----------------+----------|
-| /etc/clash      | 系统配置 |
-| ~/.config/clash | 用户配置 |
-** 机场
-| [[https://xn--4gq62f52gdss.ink/#/dashboard][一元机场]] | [[https://www.yuritele.com/auth/login][百合电信]] | [[https://mojie.app/login][魔戒]] |
-| [[https://xn--ehqx7tcnnope.com/#/plan][三毛机场]] | [[https://xn--4gqu8tcnnope.com/#/plan][一毛机场]] |      |
+* clash
+- clash :: 网络代理工具
+- clash verge :: 基于 clash内核 的代理客户端
+- clash verge rev :: clash verge 的分支重构版
 
-* 概念
-- 简介 :: [[id:08706863-69ee-46f6-8aa5-70e5a0d8edd3][go]]编写的开源代理工具
+#+name: 机场
+|----------+----------+----------|
+| [[https://mojie.app/login][魔戒]]     | [[https://www.yuritele.com/auth/login][百合电信]] | [[https://xn--mes358aby2apfg.com/login][赔钱机场]] |
+|----------+----------+----------|
+| [[https://xn--4gq62f52gdss.ink/#/dashboard][一元机场]] | [[https://xn--ehqx7tcnnope.com/#/plan][三毛机场]] | [[https://xn--4gqu8tcnnope.com/#/plan][一毛机场]] |
+|----------+----------+----------|
+
+
+
+** clash同一局域网内连另一台机器的代理
+:PROPERTIES:
+:ID:       2dc0ffdf-0152-46ea-849a-acdce69214e6
+:END:
+1. 机器A 和 机器B 在 *同一局域网*
+2. 在 机器A 中的 代理 clash verge 中 *打开局域网连接*
+3. 机器B 以 [[id:6aac1fb6-844b-4aed-9fdf-4f2e89841f21][linux终端走代理]] 的方式连接
+   - IP  ：机器A的IP
+   - PORT：clash verge 的端口

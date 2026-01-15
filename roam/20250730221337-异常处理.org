@@ -1,577 +1,169 @@
 :PROPERTIES:
 :ID:       4a8dd90d-37f5-4224-a212-6df329902aa2
 :END:
-#+title: 异常处理(exceptions)
+#+title: 异常处理
 #+filetags: cpp
 
-* 异常处理(exceptions) [[https://www.learncpp.com/cpp-tutorial/basic-exception-handling/][learncpp27.2]]
-1. 为什么要有异常处理？[fn:1]
-
-2. =throw= ：（抛出）异常
-   #+begin_src cpp :results output :namespaces std :includes <iostream>
-   throw -1;                 // 抛出 整型字面量
-   throw ENUM_INVALID_INDEX; // 抛出 枚举值
-   throw "Can not take square root of negative number"; // 抛出 C风格字符串
-   throw dX;                 // 抛出 double类型变量
-   throw MyException("Fatal Error"); // 抛出 MyException类对象
-   #+end_src
-3. =try= ：（尝试）寻找异常
-   #+begin_src cpp :results output :namespaces std :includes <iostream>
-   try {                     // try语句用于查找 {}代码块 中的异常
-       throw -1;
-   }
-   #+end_src
-4. =catch= ：（捕获）异常并处理
-   1) 类似函数参数，可以按 值/引用捕获，不使用参数值可以只放类型名
-   #+begin_src cpp :results output :namespaces std :includes <iostream>
-   catch (int x) {
-       // 处理 int 类型异常
-       std::cerr << "We caught an int exception with value" << x << '\n';}
-
-   // 不使用参数值 -> 只放类型名
-   catch (double) {std::cerr << "We caught an exception of type double\n";}
-   #+end_src
-
-5. 当异常抛出时，会沿着调用栈向上抛出（这是 *栈展开* 的过程[fn:4]，会销毁展开函数的局部变量），直到找到处理异常的代码；若没找到[fn:2]，则调用 =std::terminate()= ，栈不会展开（这就是为什么我们调试 core dump文件，可以看到完整调用栈的原因），且局部变量不会销毁 [[https://www.learncpp.com/cpp-tutorial/exceptions-functions-and-stack-unwinding/][learncpp27.3]]；
-   栈展开过程中，异常对象被复制到调用栈外的某个内存区域，在异常得到处理前，会一直在（因此异常必须是可复制的）
-
-6. *通用异常处理程序* ：用 =...= 捕获任何类型的异常，放在异常处理的最后；通常用于包装 =main()= 函数内容，使用后 调试信息会丢失，可以使用 条件编译 解决[fn:3] [[https://www.learncpp.com/cpp-tutorial/uncaught-exceptions-catch-all-handlers/][learncpp27.4]]
-   #+begin_src cpp :results output :namespaces std :includes <iostream>
-   try {
-     throw 5;         // 抛出int类型异常
-   }
-   catch (double x) { // 捕获double类型异常
-     std::cout << "We caught an exception of type double: " << x << '\n';
-   }
-   catch (...) { // 捕获所有类型异常
-     std::cout << "We caught an exception of an undetermined type\n";
-   }
-   #+end_src
-
-   #+RESULTS:
-   : We caught an exception of an undetermined type
-
-7. *异常类* [[https://www.learncpp.com/cpp-tutorial/exceptions-classes-and-inheritance/][learncpp27.5]]
-   1) 背景：基本数据类型（eg：int）作为异常类型：含义模糊 [fn:11] -> 异常类名就含有关于异常信息的含义[fn:12]
-   2) 继承：派生类可以传入参数为基类引用/指针的 catch子句，且按catch顺序捕获 -> 因此基类放最后 [fn:13]
-   3) =std::exception= 类 是所有异常类的基类（接口类），可以用它作为 catch的参数捕获所有异常，使用 =what()= 查看异常描述文本，但一般常用其派生类 =std::runtime_error= [fn:14]
-   4) 可以从 std::exception 或其他异常类 *派生自己的类，并重写 =what()= 函数* [fn:15]
-
-8. *重新抛出异常* ：自身不处理，将异常沿着调用栈向上传递 [[https://www.learncpp.com/cpp-tutorial/rethrowing-exceptions/][learncpp27.6]]
-   （✨ *BP* ：使用 throw 而不是 throw <新异常> 来抛出捕获的异常）
-   - throw <新异常> :: 抛出的新异常（不同于 捕获的异常），出现问题（eg：类切片[fn:6]）
-   - throw          :: 抛出的捕获的异常[fn:7]
-
-9. *函数try块* ：用于函数内部捕获异常 [fn:16] [[https://www.learncpp.com/cpp-tutorial/function-try-blocks/][learncpp27.7]]
-   1) 可以捕获 基类和当前类的异常 [fn:16]
-   2) 构造函数catch块的限制：对于析构函数、其他函数，见下图：[[id:2c7e49f0-9051-4f89-a7b2-a34da2e4b872][函数try块的限制]]
-      a. 不允许 处理异常
-      b. 不允许 返回语句
-      c. catch块末尾隐式重新抛出异常
-
-10. 异常发生时 *清理资源* 的处理 [[https://www.learncpp.com/cpp-tutorial/exception-dangers-and-downsides/][learncpp27.8]]
-    1) 清理资源的函数放 try-catch 外[fn:8]
-    2) 动态内存
-       a. 在 try-catch 外 delete [fn:9]
-       b. try 中使用 RAII（eg：智能指针）[fn:10]
-
-11. 类构造函数发生异常，所有已构造类成员会被析构 [fn:5]；析构函数抛出异常，程序终止，因此在析构函数内不使用 try-catch，而是写入日志 [[https://www.learncpp.com/cpp-tutorial/exception-dangers-and-downsides/][learncpp27.8]]
-
-12. 承诺函数不会抛出异常/不会失败，以使编译器能进行优化：使用 [[id:54dd1cc2-2d5f-4971-97cd-57541ddcef10][noexcept]]
-
-13. *何时使用* 异常？异常会增加可执行文件大小，导致运行速度变慢，但以下场景可以使用
-    - 错误很严重，执行无法继续
-    - 正在处理的错误可能很少发生
-    - 错误无法在发生位置处理
-    - 没有好的方法将错误码返回给调用者
+* 异常处理
+- 异常处理 :: 程序运行时发生异常（eg：除0、文件不存在、内存不足），通过捕获和处理，防止程序直接崩溃，在此基础上还能实现错误恢复、资源释放等优雅处理
+  *why？*[fn:1]
+  1. 异常处理 *关键字* ：
+     1) =throw= 抛出异常
+     2) =try= 尝试寻找异常
+     3) =catch= 捕获异常并处理
+     4) =...= 捕获任何类型的异常，放在异常处理的最后
+  2. *栈展开* ：异常抛出后，从下向上层层弹出调用栈中的函数（销毁函数中的局部变量），直到找到匹配的catch块 [fn:2]；
+     否则调用 =std::terminate()= ，栈不会展开（局部变量不会被销毁），这就是为什么调试 core dump文件，能看到完整调用栈 [fn:3]；
+     栈展开过程中，异常对象会被转移到调用栈外的专用内存区域，直到异常处理完成才销毁
+  3. *重新抛出异常* ：[fn:4]
+     - =throw=          ：抛出的捕获的异常（ *最佳实践* ）
+     - =throw <新异常>= ：抛出的新异常
+  4. 异常发生时 *如何清理资源？* [fn:5]
+     1) 资源    ：try-catch 外 调用清理函数
+     2) 动态内存：
+        a. try-catch 外 delete
+        b. try-catch 内 RAII
+  5. *何时使用？*
+     异常会增加可执行文件大小，导致运行速度变慢。以下场景可以考虑使用：
+     1) 错误很严重（执行无法继续）
+     2) 错误很少发生
+     3) 错误无法在发生位置处理
+     4) 没有好的方法将错误码返回给调用者
+#+begin_src cpp
+try {              // NOTE try 尝试在代码块中 寻找异常
+  throw 5;         // NOTE throw 抛出异常
+}                  /* throw还能抛出 枚举值、C风格字符串、类对象 */
+catch (double x) { // NOTE catch 捕获异常
+  std::cout << "We caught an exception of type double: " << x << '\n';
+}
+catch (...) {      // NOTE ...捕获任意类型的异常
+  std::cout << "We caught an exception of an undetermined type\n";
+}
+#+end_src
 
 
-
-** 函数try块的限制 :ATTACH:
+** 异常安全保证
 :PROPERTIES:
-:ID:       2c7e49f0-9051-4f89-a7b2-a34da2e4b872
+:ID:       6acd2de2-7bd1-4b80-a25c-53f0b478d06e
 :END:
-[[attachment:_20250731_161322screenshot.png]]
+- 异常安全保证 :: 衡量发生异常时，程序能否保持一致性、避免资源泄漏的一套分级规范
+|-----------------------+--------------------------------------------------------------------+----------------------|
+| 级别                  | 说明                                                               | 备注                 |
+|-----------------------+--------------------------------------------------------------------+----------------------|
+| 不提供保证            | 不保证发生什么情况                                                 |                      |
+| 基本保证              | 抛出异常（不会内存泄漏、程序状态可能改变）                         |                      |
+| 强保证                | 抛出异常（不会内存泄漏、程序状态不变：要么全部成功，要么全部失败） |                      |
+| 不抛出/不失败异常保证 | 不抛出异常（内部捕获处理或调用std::terminated）                    | [[id:d98f9dd9-63f5-448c-aed9-8bf71a1dd4bf][noexcept]]对应这个级别 |
+|-----------------------+--------------------------------------------------------------------+----------------------|
 
+
+** 函数try块
+:PROPERTIES:
+:ID:       6c4e177e-baa7-4874-a1da-e8267d31d336
+:END:
+用于函数内部捕获异常 [fn:6]
+|--------------+----------------------------+----------------------+-----------------------------|
+| 函数类型     | 通过 return 语句解决异常？ | catch 块结束时的行为 | 限制                        |
+|--------------+----------------------------+----------------------+-----------------------------|
+| 构造函数     | 否，必须抛出或重新抛出     | 隐式重新抛出         | 不允许 处理异常、返回语句   |
+|              |                            |                      | catch块末尾隐式重新抛出异常 |
+| 析构函数     | 是                         | 隐式重新抛出         |                             |
+| 无返回值函数 | 是                         | 解决异常             |                             |
+| 有返回值函数 | 是                         | 未定义行为           |                             |
+|--------------+----------------------------+----------------------+-----------------------------|
+构造函数 发生异常：所有已构造类成员会被析构
+析构函数 发生异常：程序终止，因此在析构函数内不使用 try-catch，而是写入日志
+
+
+** 异常类
+:PROPERTIES:
+:ID:       d00479c6-7ee9-4496-a6b4-9b5ad45fcb3c
+:END:
+- 异常类 :: 封装异常相关信息的类，支持被 =throw= 抛出并被 =try-catch= 捕获处理
+  *why？* 基本数据类型（eg：int）作为异常类型，含义模糊  -> 自定义类作为异常类型，含义清晰（类名自带异常信息）[fn:7]
+  1. =catch(基类)= 在所有 =catch(派生类)= 后 [fn:8]
+  2. =std::exception= 是所有异常类的基类， =catch(const std::exception& exception)= 捕获所有异常， =what()= 打印异常描述文本
+  3. 可以从异常类 *派生自己的类，并重写 =what()= 函数* [fn:9]
+
+
+** noexcept
+:PROPERTIES:
+:ID:       d98f9dd9-63f5-448c-aed9-8bf71a1dd4bf
+:END:
+- noexcept :: 承诺函数 *不会抛出异常/不会失败* ，编译器可以进行优化（std::vector 可以感知 noexcept，并决定用拷贝语义或移动语义）
+  1. =noexcept函数= 内部 *捕获并处理异常* 或 *调用std::terminate* （处理不了时），以此保证不抛出异常 [fn:10]
+  2. noexcept 可以 *带布尔参数* [fn:11]
+  3. noexcept 可以在 *表达式内部使用* ，不会抛异常返回 =true= ，否则 =false= [fn:12]
+  4. *何时使用？*
+     - （始终使用）[[id:51145ff8-f7e2-462d-96ec-01cb9e35c2cc][移动构造函数]]、移动赋值
+     - （尽量使用）[[id:cddd975a-e5ee-4db6-9749-dab49f962796][拷贝构造函数]]、拷贝赋值
 
 * Footnotes
-[fn:16]
+
+[fn:1]
 #+begin_src cpp :results output :namespaces std :includes <iostream>
-class A
-{
-private:
-	int m_x;
-public:
-	A(int x) : m_x{x}
-	{
-		if (x <= 0)
-			throw 1; // 从基类抛出异常：A 的构造函数
-	}
-};
-
-class B : public A
-{
-public:
-	B(int x) try : A{x} // 这里使用 函数try块
-	{
-    // if (x <= 0)    // 从当前类抛出异常
-		//    throw 1;
-	}
-	catch (...) // note this is at same level of indentation as the function itself
-	{
-                // Exceptions from member initializer list or
-                // from constructor body are caught here
-
-                std::cerr << "Exception caught\n";
-
-                throw; // rethrow the existing exception
-	}
-};
-
-int main()
-{
-	try
-	{
-		B b{0};
-	}
-	catch (int)
-	{
-		std::cout << "Oops\n";
-	}
+double divide(int x, int y) {
+    return static_cast<double>(x)/y;
 }
-#+end_src
 
-
-[fn:15]
-#+begin_src cpp :results output :namespaces std :includes <iostream> <string> <string_view>
-#include <exception> // for std::exception
-
-class ArrayException : public std::exception // 派生自己的异常类
-{
-private:
-	std::string m_error{}; // handle our own string
-
-public:
-	ArrayException(std::string_view error)
-		: m_error{error}
-	{
-	}
-
-	// 重写 std::exception::what()
-	const char* what() const noexcept override { return m_error.c_str(); }
-};
-
-class IntArray
-{
-private:
-	int m_data[3] {}; // assume array is length 3 for simplicity
-
-public:
-	IntArray() {}
-
-	int getLength() const { return 3; }
-
-	int& operator[](const int index)
-	{
-		if (index < 0 || index >= getLength())
-			throw ArrayException("Invalid index");
-
-		return m_data[index];
-	}
-
-};
-
-int main()
-{
-	IntArray array;
-
-	try
-	{
-		int value{ array[5] };
-	}
-	catch (const ArrayException& exception) // derived catch blocks go first
-	{
-		std::cerr << "An array exception occurred (" << exception.what() << ")\n";
-	}
-	catch (const std::exception& exception)
-	{
-		std::cerr << "Some other std::exception occurred (" << exception.what() << ")\n";
-	}
-}
-#+end_src
-
-[fn:14]
-#+begin_src cpp :results output :namespaces std :includes <iostream>
-#include <exception> // for std::exception
-#include <stdexcept> // for std::runtime_error
-
-int main()
-{
-	try
-	{
-		throw std::runtime_error("Bad things happened");
-	}
-	// This handler will catch std::exception and all the derived exceptions too
-	catch (const std::exception& exception)
-	{
-		std::cerr << "Standard exception: " << exception.what() << '\n';
-	}
-
-	return 0;
-}
-#+end_src
-
-
-[fn:13]
-#+begin_src cpp :results output :namespaces std :includes <iostream>
-class Base
-{
-public:
-    Base() {}
-};
-
-class Derived: public Base
-{
-public:
-    Derived() {}
-};
-
-int main()
-{
-    try
-    {
-        throw Derived();
+// NOTE 函数错误处理难处：函数有自身的返回值，又要返回错误码，耦合 “业务实现” 和 “错误处理”
+// 1. 错误码和代码紧密相连影响代码本身的布局（为了错误检测增加了代码）
+// 2. 错误码是数字的话晦涩难懂
+double divide(int x, int y, bool& outSuccess) {
+    if (y == 0) {
+        outSuccess = false;
+        return 0.0;
     }
-    catch (const Derived& derived) // 若这行代码和 catch (const Base& base) 交换，则异常将永远无法被 Derived这行catch代码捕获
-    {
-        std::cerr << "caught Derived";
-    }
-    catch (const Base& base)
-    {
-        std::cerr << "caught Base";
-    }
-
-    return 0;
+    outSuccess = true;
+    return static_cast<double>(x)/y;
 }
 #+end_src
 
-[fn:12]
-#+begin_src cpp :results output :namespaces std :includes <iostream> <string> <string_view>
-// 自定义异常类：数组异常
-class ArrayException
-{
-private:
-	std::string m_error;
-
-public:
-	ArrayException(std::string_view error)
-		: m_error{ error }
-	{
-	}
-
-	const std::string& getError() const { return m_error; }
-};
-
-class IntArray
-{
-private:
-	int m_data[3]{}; // assume array is length 3 for simplicity
-
-public:
-	IntArray() {}
-
-	int getLength() const { return 3; }
-
-	int& operator[](const int index)
-	{
-		if (index < 0 || index >= getLength())
-			throw ArrayException{ "Invalid index" }; //使用自定义异常类
-
-		return m_data[index];
-	}
-
-};
-
-int main()
-{
-	IntArray array;
-
-	try
-	{
-		int value{ array[5] }; // out of range subscript
-	}
-	catch (const ArrayException& exception)
-	{
-		std::cerr << "An array exception occurred (" << exception.getError() << ")\n";
-	}
-}
-#+end_src
-
-
-[fn:11]
+[fn:2]
 #+begin_src cpp :results output :namespaces std :includes <iostream>
-// Using the IntArray overloaded operator[] above
-
-try
-{
-    int* value{ new int{ array[index1] + array[index2]} };
-}
-catch (int value)
-{
-    // What are we catching here?
-}
-#+end_src
-
-[fn:10]
-#+begin_src cpp :results output :namespaces std :includes <iostream> <memory>
-try
-{
-    auto* john { new Person("John", 18, PERSON_MALE) };
-    std::unique_ptr<Person> upJohn { john }; // 使用智能指针管理
-
-    ProcessPerson(john);
-
-    // ProcessPerson抛出异常，超出作用域时，智能指针自动清理
-}
-catch (const PersonException& exception)
-{
-    std::cerr << "Failed to process person: " << exception.what() << '\n';
-}
-#+end_src
-
-
-[fn:9]
-#+begin_src cpp :results output :namespaces std :includes <iostream>
-Person* john{ nullptr };
-
-try
-{
-    john = new Person("John", 18, PERSON_MALE);
-    processPerson(john);
-    // delete john; FIXME 这里使用 processPerson 抛出异常，会没法 delete
-}
-catch (const PersonException& exception)
-{
-    std::cerr << "Failed to process person: " << exception.what() << '\n';
-}
-
-delete john; // ok
-#+end_src
-
-[fn:8]
-#+begin_src cpp :results output :namespaces std :includes <iostream>
-try
-{
-    openFile(filename);
-    writeFile(filename, data);
-    // closeFile(filename); FIXME 放这里，若 writeFile 抛出异常，则没法关闭文件
-}
-catch (const FileException& exception)
-{
-    std::cerr << "Failed to write to file: " << exception.what() << '\n';
-}
-
-// ok
-closeFile(filename);
-#+end_src
-
-
-[fn:7]
-#+begin_src cpp :results output :namespaces std :includes <iostream>
-class Base
-{
-public:
-    Base() {}
-    virtual void print() { std::cout << "Base"; }
-};
-
-class Derived: public Base
-{
-public:
-    Derived() {}
-    void print() override { std::cout << "Derived"; }
-};
-
-int main()
-{
-    try
-    {
-        try
-        {
-            throw Derived{};
-        }
-        catch (Base& b)
-        {
-            std::cout << "Caught Base b, which is actually a ";
-            b.print();
-            std::cout << '\n';
-            throw; // 重新抛出，没有发生对象切片
-        }
-    }
-    catch (Base& b)
-    {
-        std::cout << "Caught Base b, which is actually a ";
-        b.print();
-        std::cout << '\n';
-    }
-
-    return 0;
-}
-#+end_src
-
-#+RESULTS:
-: Caught Base b, which is actually a Derived
-: Caught Base b, which is actually a Derived
-
-
-[fn:6]
-#+begin_src cpp :results output :namespaces std :includes <iostream>
-class Base
-{
-public:
-    Base() {}
-    virtual void print() { std::cout << "Base"; }
-};
-
-class Derived: public Base
-{
-public:
-    Derived() {}
-    void print() override { std::cout << "Derived"; }
-};
-
-int main()
-{
-    try
-    {
-        try
-        {
-            throw Derived{}; // 抛出 派生类 异常
-        }
-        catch (Base& b)      // ok：以基类引用 捕获 异常 -> Base引用 指向 Derived对象
-        {
-            std::cout << "Caught Base b, which is actually a ";
-            b.print();
-            std::cout << '\n';
-            throw b; // 抛出 Base新异常，该异常 通过 复制b初始化，发生对象切片
-        }
-    }
-    catch (Base& b)
-    {
-        std::cout << "Caught Base b, which is actually a ";
-        b.print();
-        std::cout << '\n';
-    }
-
-    return 0;
-}
-#+end_src
-
-#+RESULTS:
-: Caught Base b, which is actually a Derived
-: Caught Base b, which is actually a Base
-
-
-[fn:5]
-#+begin_src cpp :results output :namespaces std :includes <iostream>
-class Member
-{
-public:
-      Member() {
-          std::cerr << "Member allocated some resources\n"; }
-
-      ~Member() {
-          std::cerr << "Member cleaned up\n";}
-};
-
-class A
-{
-private:
-      int m_x {};
-      Member m_member;
-
-public:
-      A(int x) : m_x{x}
-      {
-          if (x <= 0)
-              throw 1;
-      }
-
-      ~A() {
-          std::cerr << "~A\n"; // should not be called
-      }
-};
-
-
-int main() {
-      try {
-          A a{0};      // m_x 构造失败，所有成员都会被析构
-      }
-      catch (int) {
-          std::cerr << "Oops\n";
-      }
-}
-
-// 输出：
-// Member allocated some resources
-// Member cleaned up
-// Oops
-#+end_src
-
-[fn:4]
-#+begin_src cpp :results output :namespaces std :includes <iostream>
-void D() { // called by C()
+void D() {
     std::cout << "Start D\n";
     std::cout << "D throwing int exception\n";
-
     throw - 1;
-
-    std::cout << "End D\n"; // skipped over
+    std::cout << "End D\n"; // 被跳过
 }
 
-void C() { // called by B()
+void C() {
     std::cout << "Start C\n";
     D();
     std::cout << "End C\n";
 }
 
-void B() { // called by A()
+void B() {
     std::cout << "Start B\n";
-
     try {
         C();
     }
-    catch (double) // not caught: exception type mismatch
-    {
+    catch (double) { // 没有捕获：类型不匹配
         std::cerr << "B caught double exception\n";
     }
 
     try{ }
-    catch (int) // not caught: exception not thrown within try
-    {
+    catch (int) {    // 没有捕获：try块没捕获任何内容
         std::cerr << "B caught int exception\n";
     }
-
     std::cout << "End B\n";
 }
 
-void A() // called by main()
-{
+void A() {
     std::cout << "Start A\n";
 
     try {
         B();
     }
-    catch (int) // exception caught here and handled
-    {
+    catch (int) {    // 捕获：异常在此处捕获和处理
         std::cerr << "A caught int exception\n";
     }
-    catch (double) // not called because exception was handled by prior catch block
-    {
+    catch (double) { // 没有调用：异常在先前的catch块中处理
         std::cerr << "A caught double exception\n";
     }
 
-    // execution continues here after the exception is handled
+    // 异常处理后，从这里继续执行
     std::cout << "End A\n";
 }
 
@@ -579,15 +171,12 @@ int main() {
     std::cout << "Start main\n";
 
     try {
-        A();
+        A();     // main() -> A() -> B() -> C() -> D()
     }
-    catch (int) // not called because exception was handled by A
-    {
+    catch (int) { // 没有调用：A()中已经处理异常
         std::cerr << "main caught int exception\n";
     }
     std::cout << "End main\n";
-
-    return 0;
 }
 #+end_src
 
@@ -601,51 +190,7 @@ int main() {
 : End A
 : End main
 
-
 [fn:3]
-#+begin_src cpp :results output :namespaces std :includes <iostream>
-struct GameSession {
-    // Game session data here
-};
-
-void runGame(GameSession&) {
-    throw 1;
-}
-
-void saveGame(GameSession&) {
-    // Save user's game here
-}
-
-class DummyException // a dummy class that can't be instantiated
-{
-    DummyException() = delete;
-};
-
-int main() {
-    GameSession session{};
-
-    try
-    {
-        runGame(session);
-    }
-#ifndef NDEBUG       // 2. 加入 条件编译指令，使得调试版本能正确调试
-    catch(...)
-    {
-        std::cerr << "Abnormal termination\n";
-    }
-#else
-    catch(DummyException)
-    {
-    }
-#endif
-
-    saveGame(session); // 1.捕获异常后，保存用户信息；代价是：不适合 debug，因为栈全都展开了
-
-    return 0;
-}
-#+end_src
-
-[fn:2]
 #+begin_src cpp :results output :namespaces std :includes <iostream> <cmath>
 double mySqrt(double x) {
     if (x < 0.0)
@@ -664,28 +209,350 @@ int main() {
 }
 #+end_src
 
-
-[fn:1]
-#+name: 背景
-#+begin_example
-函数进行错误处理的难处：函数有自身的返回值，又要返回错误码 -> 错误码是数字的话晦涩难懂，又要和代码紧密相连影响代码本身的布局（为了错误检测增加了代码）
-#+end_example
-
-#+name: 不使用错误码
+[fn:4]
 #+begin_src cpp :results output :namespaces std :includes <iostream>
-double divide(int x, int y) {
-    return static_cast<double>(x)/y;
+class Base {
+public:
+    Base() {}
+    virtual void print() { std::cout << "Base"; }
+};
+
+class Derived: public Base {
+public:
+    Derived() {}
+    void print() override { std::cout << "Derived"; }
+};
+
+void throw_old() {
+  try {
+        try {
+            throw Derived{};
+        }
+        catch (Base& b) {
+            std::cout << "Caught Base b, which is actually a ";
+            b.print();
+            std::cout << '\n';
+            throw;                 // NOTE 重新抛出，没有发生对象切片
+        }
+    }
+    catch (Base& b) {
+        std::cout << "Caught Base b, which is actually a ";
+        b.print();
+        std::cout << '\n';
+    }
+}
+
+void throw_new() {
+  try {
+      try {
+          throw Derived{};         // 抛出 派生类 异常
+      }
+      catch (Base& b) {            // 以基类引用 捕获 异常（Base引用 指向 Derived对象）
+          std::cout << "Caught Base b, which is actually a ";
+          b.print();
+          std::cout << '\n';
+          throw b;                 // NOTE 抛出 Base新异常，该异常 通过 复制b初始化，FIXME 对象切片
+      }
+  }
+  catch (Base& b) {
+      std::cout << "Caught Base b, which is actually a ";
+      b.print();
+      std::cout << '\n';
+  }
+}
+
+int main() {
+  throw_old();
+  throw_new();
 }
 #+end_src
 
-#+name: 使用错误码
-#+begin_src cpp :results output :namespaces std :includes <iostream>
-double divide(int x, int y, bool& outSuccess) {
-    if (y == 0) {
-        outSuccess = false;
-        return 0.0;
-    }
-    outSuccess = true;
-    return static_cast<double>(x)/y;
+#+RESULTS:
+: Caught Base b, which is actually a Derived
+: Caught Base b, which is actually a Derived
+: Caught Base b, which is actually a Derived
+: Caught Base b, which is actually a Base
+
+[fn:5]
+#+name: 清理资源
+#+begin_src cpp
+try {
+    openFile(filename);
+    writeFile(filename, data);
+    // closeFile(filename);                FIXME 放这里，若 writeFile 抛出异常，则没法关闭文件
 }
+catch (const FileException& exception) {
+    std::cerr << "Failed to write to file: " << exception.what() << '\n';
+}
+
+closeFile(filename); // ok
+#+end_src
+
+#+name: 释放动态内存 try-catch 外 delete
+#+begin_src cpp
+Person* john{ nullptr };
+
+try {
+    john = new Person("John", 18, PERSON_MALE);
+    processPerson(john);
+    // delete john;                        FIXME 这里使用 processPerson 抛出异常，会没法 delete
+}
+catch (const PersonException& exception) {
+    std::cerr << "Failed to process person: " << exception.what() << '\n';
+}
+
+delete john; // ok
+#+end_src
+
+#+name: 释放动态内存 try-catch 内 RAII
+#+begin_src cpp
+try {
+    auto* john { new Person("John", 18, PERSON_MALE) };
+    std::unique_ptr<Person> upJohn { john }; // NOTE 使用智能指针管理
+
+    ProcessPerson(john);
+    // ProcessPerson抛出异常，超出作用域时，智能指针自动清理
+}
+catch (const PersonException& exception) {
+    std::cerr << "Failed to process person: " << exception.what() << '\n';
+}
+#+end_src
+
+[fn:6]
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+class A {
+private:
+  int m_x;
+public:
+  A(int x) : m_x{x} {
+    if (x <= 0)
+      throw 1; // 从基类抛出异常：A 的构造函数
+  }
+};
+
+class B : public A {
+public:
+  B(int x) try : A{x} { // 这里使用 函数try块
+    // if (x <= 0)         从当前类抛出异常
+    //    throw 1;
+  }
+  catch (...) {
+      std::cerr << "Exception caught\n";
+      throw; // rethrow the existing exception
+  }
+};
+
+int main() {
+  try {
+    B b{0};
+  }
+  catch (int) {
+    std::cout << "Oops\n";
+  }
+}
+#+end_src
+
+#+RESULTS:
+: Oops
+
+[fn:7]
+#+name: 基本数据类型 作为 异常类型
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+try {
+    int* value{ new int{ array[index1] + array[index2]} };
+}
+catch (int value) {
+    // int value 捕获的是啥？
+}
+#+end_src
+
+#+name: 自定义类 作为 异常类型
+#+begin_src cpp :results output :namespaces std :includes <iostream> <string> <string_view>
+class ArrayException { // 自定义异常类：数组异常
+private:
+  std::string m_error;
+public:
+  ArrayException(std::string_view error)
+    : m_error{ error } { }
+
+  const std::string& getError() const { return m_error; }
+};
+
+class IntArray {
+private:
+  int m_data[3]{};
+public:
+  IntArray() {}
+
+  int getLength() const { return 3; }
+
+  int& operator[](const int index) {
+    if (index < 0 || index >= getLength())
+      throw ArrayException{ "Invalid index" }; //使用自定义异常类
+    return m_data[index];
+  }
+};
+
+int main() {
+  IntArray array;
+
+  try {
+      int value{ array[5] }; // out of range subscript
+  }
+  catch (const ArrayException& exception) {
+    std::cerr << "An array exception occurred (" << exception.getError() << ")\n";
+  }
+}
+#+end_src
+
+[fn:8]
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+class Base {
+public:
+    Base() {}
+};
+
+class Derived: public Base {
+public:
+    Derived() {}
+};
+
+int main() {
+    try {
+        throw Derived();
+    }
+    catch (const Derived& derived) {   // 若这行代码和 catch (const Base& base) 交换，则异常将永远无法被 这行catch代码捕获
+        std::cerr << "caught Derived";
+    }
+    catch (const Base& base) {
+        std::cerr << "caught Base";
+    }
+}
+#+end_src
+
+[fn:9]
+#+begin_src cpp :results output :namespaces std :includes <iostream> <string> <string_view>
+#include <exception> // for std::exception
+
+class ArrayException : public std::exception { // NOTE 派生自己的异常类
+private:
+	std::string m_error{};
+public:
+  ArrayException(std::string_view error) : m_error{error} { }
+
+  // NOTE 重写 std::exception::what()
+  const char* what() const noexcept override { return m_error.c_str(); }
+};
+
+class IntArray {
+private:
+	int m_data[3] {};
+
+public:
+	IntArray() {}
+
+	int getLength() const { return 3; }
+
+	int& operator[](const int index) {
+		if (index < 0 || index >= getLength())
+			throw ArrayException("Invalid index");
+		return m_data[index];
+	}
+};
+
+int main() {
+	IntArray array;
+
+	try {
+		int value{ array[5] };
+	}
+	catch (const ArrayException& exception) { // derived catch blocks go first
+		std::cerr << "An array exception occurred (" << exception.what() << ")\n";
+	}
+	catch (const std::exception& exception) {
+		std::cerr << "Some other std::exception occurred (" << exception.what() << ")\n";
+	}
+}
+#+end_src
+
+[fn:10]
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+class Doomed {
+public:
+    ~Doomed() {
+        std::cout << "Doomed destructed\n";
+    }
+};
+
+void thrower() {
+    std::cout << "Throwing exception\n";
+    throw 1;
+}
+
+void pt() {
+    std::cout << "pt (potentally throwing) called\n";
+    Doomed doomed{};
+    thrower();
+    std::cout << "This never prints\n";
+}
+
+void nt() noexcept {
+    std::cout << "nt (noexcept) called\n";
+    Doomed doomed{};
+    thrower();
+    std::cout << "this never prints\n";
+}
+
+// NOTE noexcept函数 不会阻止 抛出异常、调用可能抛异常的函数
+// NOTE noexcept 保证不会抛出异常：内部捕获并处理异常，能调用抛出异常函数 pt()，也能调用 保证不抛出异常函数nt()，但nt()没法处理，于是调用 std::terminate
+void tester(int c) noexcept {
+    std::cout << "tester (noexcept) case " << c << " called\n";
+    try {
+        (c == 1) ? pt() : nt();
+    }
+    catch (...) {
+        std::cout << "tester caught exception\n";
+    }
+}
+
+int main() {
+    std::cout << std::unitbuf;
+    std::cout << std::boolalpha;
+    tester(1);
+    std::cout << "Test successful\n\n";
+    tester(2);
+    std::cout << "Test successful\n";
+}
+
+/* 输出 */
+// tester (noexcept) case 1 called
+// pt (potentally throwing) called
+// Throwing exception
+// Doomed destructed
+// tester caught exception
+// Test successful
+//
+// tester (noexcept) case 2 called
+// nt (noexcept) called
+// Throwing exception
+#+end_src
+
+[fn:11]
+#+begin_src cpp
+noexcept(true)  // 等价于 noexcept
+noexcept(false) // 意味着函数可能抛异常
+#+end_src
+
+[fn:12]
+#+begin_src cpp
+void foo() {throw -1;}
+void boo() {};
+void goo() noexcept {};
+struct S{};
+
+constexpr bool b1{ noexcept(5 + 3) }; // true; ints are non-throwing
+constexpr bool b2{ noexcept(foo()) }; // false; foo() throws an exception
+constexpr bool b3{ noexcept(boo()) }; // false; boo() is implicitly noexcept(false)
+constexpr bool b4{ noexcept(goo()) }; // true; goo() is explicitly noexcept(true)
+constexpr bool b5{ noexcept(S{}) };   // true; a struct's default constructor is noexcept by default
 #+end_src

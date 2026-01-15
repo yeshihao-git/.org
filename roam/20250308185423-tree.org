@@ -1,8 +1,0 @@
-:PROPERTIES:
-:ID:       f42439b6-bbfa-4fe1-8156-7046961930a0
-:END:
-#+title: tree
-#+filetags: emacs
-
-* tree
-以树状形式列出文件夹中的内容； =tree= 可以在当前目录列出树形结构， =-L选项= 设置结构深度， =-d选项= 只显示文件夹

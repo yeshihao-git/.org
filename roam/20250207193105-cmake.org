@@ -2,7 +2,7 @@
 :ID:       c651b8b0-bc76-451d-acac-0ea55329f0e8
 :END:
 #+title: cmake
-#+filetags: cli
+#+filetags: tools
 
 * cmake
 *跨平台的构建配置工具* ，四个阶段如下

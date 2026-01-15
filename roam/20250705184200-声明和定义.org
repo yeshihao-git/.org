@@ -1,30 +1,91 @@
 :PROPERTIES:
 :ID:       1752c1cb-3fd8-4272-96c9-fa73e14a7d3c
 :END:
-#+title: 声明和定义
+#+title: 声明
 #+filetags: cpp
 
-* 声明和定义 [[https://www.learncpp.com/cpp-tutorial/forward-declarations/][参考]]
-1. *声明* ：告诉编译器某个标识符（符号）存在
-   #+begin_src cpp :results output :namespaces std :includes <iostream>
+* 声明
+- 声明 :: 告诉编译器某个标识符（符号）存在
 
-   int add(int x, int y); // tells the compiler about a function named "add" that takes two int parameters and returns an int.  No body!
-   int x;                 // tells the compiler about an integer variable named x
+#+begin_src cpp
+int add(int x, int y); // 声明 add
+#+end_src
 
-   #+end_src
+** 前向声明
+:PROPERTIES:
+:ID:       ca54a01f-2f2f-4b35-b5e1-2bc51a5b456c
+:ROAM_ALIASES: 前置声明
+:END:
+- 前向声明 :: （一种[[id:81d5af64-b92c-42d7-9792-83f93941f4c7][不完全类型]]）告诉编译器某个 *标识符的存在* ，后续再提供标识符的定义 [fn:1]
+  1. 解决 *循环依赖* 问题，见 [[id:40c9dfcd-6bcb-4bec-8160-89b3187c4997][std::shared_ptr]]
+  2. 用于 *多文件程序链接* ，更优解：使用 [[id:fbf786c2-5b6e-47a1-81b9-c1c644b567bb][头文件]] [fn:2]
 
-2. *定义* ：是声明，且有对应实现
-   #+begin_src cpp :results output :namespaces std :includes <iostream>
+** 不完全类型
+:PROPERTIES:
+:ID:       81d5af64-b92c-42d7-9792-83f93941f4c7
+:END:
+- 不完全类型 ::  声明但未定义的类型
 
-   // because this function has a body, it is an implementation of function add()
-   int add(int x, int y)
-   {
-       int z{ x + y };   // instantiates variable z
-       return z;
-   }
+*有哪些* ？
+1. [[id:ca54a01f-2f2f-4b35-b5e1-2bc51a5b456c][前向声明]] 类类型（结构体、类、联合体）、变量
+2. [[id:878bbff5-6362-4cf9-ab1c-15bc1849cd79][指针]] 和 [[id:1f772bce-0f88-46a2-ab44-c9bf04b30653][引用]]
 
-   int x;                // instantiates variable x
 
-   #+end_src
+* 定义
+:PROPERTIES:
+:ID:       0a007e7b-1391-4161-b0e2-63e2fc93502e
+:END:
+- 定义 :: 是声明，且有对应实现
+#+begin_example cpp
+int add(int x, int y) { // 定义 add
+    int z{ x + y };
+    return z;
+}
 
-3. 声明了但没有定义的类型，称为 [[id:93f32e84-8167-4897-a64f-30d23f1bab17][不完全类型]]
+int x;                 // 声明+定义 x
+#+end_example
+
+
+** 单一定义规则
+:PROPERTIES:
+:ID:       9e748196-1cab-4aed-9841-10d89bfff8b4
+:ROAM_ALIASES: ODR
+:END:
+- 单一定义规则 :: 一个对象或函数在一个文件或程序内不能超过一个定义。具体来说：
+  1. *所有翻译单元* 中 =函数、变量= 定义只能有 *一个*
+  2. *多个翻译单元* 中 =类类型（结构体、类、联合体）、模板 、inline函数、inline变量= 定义可以有 *多个* （函数模板实例化的函数是隐式inline的）
+
+* Footnotes
+
+[fn:1]
+#+begin_src cpp
+int add(int x, int y); // 前向声明
+
+int main() {
+    std::cout << "The sum of 3 and 4 is: " << add(3, 4) << '\n';  // this works because we forward declared add() above
+    return 0;
+}
+
+int add(int x, int y) { // even though the body of add() isn't defined until here
+    return x + y;
+}
+#+end_src
+
+[fn:2]
+#+name: main.cpp文件
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+int add(int x, int y); // needed so main.cpp knows that add() is a function defined elsewhere
+
+int main()
+{
+    std::cout << "The sum of 3 and 4 is: " << add(3, 4) << '\n';
+}
+#+end_src
+
+#+name: add.cpp文件
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+int add(int x, int y)
+{
+    return x + y;
+}
+#+end_src

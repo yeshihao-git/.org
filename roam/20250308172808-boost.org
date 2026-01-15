@@ -2,8 +2,22 @@
 :ID:       3e9409a2-89df-4ee7-b5de-6fe57544cee6
 :END:
 #+title: boost
-#+filetags: index
+#+filetags: cpp
 
 * boost
-1. 跨平台的 cpp stl 扩展集合
-2. *编译方法* 见[[id:f8b79cb7-0ec5-43ce-8cda-387c9d3d7b42][编译boost]]
+- boost :: 开源跨平台的 C++ 扩展库集合（填补标准库的空白）
+
+
+** 编译boost
+:PROPERTIES:
+:ID:       74d9acd7-dc03-441c-be56-952d82728dbb
+:END:
+#+name: 编译boost
+#+begin_example bash
+wget https://archives.boost.io/release/1.87.0/source/boost_1_87_0.tar.gz  #官网下载boost库
+tar -zxvf boost_1_87_0.tar.gz && cd boost_1_87_0                          #解压
+./bootstrap.sh
+./b2
+sudo ./b2 install
+ls /​usr/local/include/boost
+#+end_example

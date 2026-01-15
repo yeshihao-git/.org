@@ -2,7 +2,7 @@
 :ID:       8a46ff3c-7b8e-42e8-a6c9-bdaf55195c4a
 :END:
 #+title: gdb
-#+filetags: gdb
+#+filetags: tools
 
 * gdb
 ** 快速开始

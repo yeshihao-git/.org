@@ -4,89 +4,337 @@
 #+title: 构造函数
 #+filetags: cpp
 
-* 构造函数 [[https://www.learncpp.com/cpp-tutorial/introduction-to-constructors/][learncpp14.9]] [[https://www.learncpp.com/cpp-tutorial/constructor-member-initializer-lists/][learncpp14.10]]
-1. 特殊的成员函数，用于 *初始化类对象* ；无返回类型，名称同类名
-2. *成员初始化列表* 用于 成员初始化（ =const= 、 =引用= 成员 只能在此初始化，不能在构造函数体中）； *构造函数体*  用于其他任务（打开文件、数据库...）
-3. 构造函数 *执行顺序* ：默认成员初始化器 -> 成员初始化列表 -> 默认初始化 -> 构造函数体[fn:6]
-4. *成员初始化顺序* ：按类中定义的顺序初始化；避免 成员变量之间的依赖关系 [fn:5]
-5. 构造函数 *内存分配*  编译器为对象 分配内存 -> 然后在为初始化的对象上 调用 构造函数 初始化
+* 构造函数
+- 构造函数 :: 特殊的[[id:3a39bdbf-179e-4dd8-aaf9-3aeb1d0c3863][成员函数]]，用于 *初始化类对象*
+  1. 名称同类名且无返回类型
+  2. *成员初始化列表* 用于成员初始化
+     1) =const= 、 =引用= 成员只能在此初始化
+     2) *初始化顺序* ：按类中定义的顺序初始化 [fn:1]
+  3. *构造函数体* 用于其他任务（eg：打开文件、数据库...）
+  4. 🔥 *执行顺序* ：默认初始化器/默认初始化 -> 成员初始化列表 -> 构造函数体[fn:2]
+  5. *内存分配* ：编译器为对象 分配内存 -> 然后在为初始化的对象上 调用 构造函数 初始化
 
-6. 构造函数 *种类*
-   - 普通构造函数（用户定义的构造函数）
-   - [[id:9d44bca6-631c-41f5-9304-0d46eb1f2287][默认构造函数]]
-   - [[id:5b76f024-43cb-467b-8e76-c40739b3a2b1][委托构造函数]]
-   - [[id:828d1a9b-3ab1-4471-8906-1cf535ea8e7d][拷贝构造函数]]
-   - [[id:cf5f4669-1abc-45b6-9882-83008c96bd4a][转换构造函数]]
-   - [[id:ac154a46-7700-4286-96aa-a45f8d93c6b6][移动构造函数]]
-   - [[id:2c40eca3-bd07-4fda-a1f2-d5fd37040ca9][列表构造函数]]
+*类别*
+1. 用户定义的构造函数
+2. [[id:705ffd8d-ce2d-4a2f-809d-61bb83d1c2d4][默认构造函数]]
+3. [[id:3a1e42bf-ed72-4d17-b1c6-72bb5315d3ce][委托构造函数]]
+4. [[id:a024d9ab-e3be-45a9-8cbd-1eb292074833][转换构造函数]]
+5. [[id:828d1a9b-3ab1-4471-8906-1cf535ea8e7d][拷贝构造函数]]
+6. [[id:51145ff8-f7e2-462d-96ec-01cb9e35c2cc][移动构造函数]]
+7. [[id:fabc592f-3ef4-4ea3-9700-abfc4300f73b][初始化列表构造函数]]
 
 
+** 默认构造函数
+:PROPERTIES:
+:ID:       705ffd8d-ce2d-4a2f-809d-61bb83d1c2d4
+:END:
+- 默认构造函数 :: 用户未定义构造函数时，编译器会为我们合成 隐式默认构造函数（也能 ==default= 显式生成）
+  1. *所有参数都有默认值* 的构造函数 是 默认构造函数，应避免歧义调用 [fn:3]
+  2. *何时调用* 默认构造函数？ =值初始化= 和 =默认初始化= 时 [fn:4]
+  3. 用户定义的默认构造函数 和 （隐式默认构造函数 和 =default定义的默认构造函数） *初始化行为不一样* [fn:5]
+#+begin_example cpp
+类名() {}
+类名(参数1=默认值1, 参数2=默认值2, ...) {}
+#+end_example
 
+
+** 委托构造函数
+:PROPERTIES:
+:ID:       3a1e42bf-ed72-4d17-b1c6-72bb5315d3ce
+:END:
+- 委托构造函数 :: （cpp11）构造函数的 *成员初始化列表* 中调用另一个构造函数，减少重复代码
+#+begin_example cpp
+类名(参数1) : 类名{ 值1, 值2 } { }  // 委托 类名(参数1, 参数2)
+类名(参数1, 参数2) : 成员1{ 参数1 }, 成员2{ 参数2 } { }
+#+end_example
+
+
+** 拷贝构造函数
+:PROPERTIES:
+:ID:       cddd975a-e5ee-4db6-9749-dab49f962796
+:END:
+- 拷贝构造函数 :: 用相同类型的对象 初始化对象
+  1. 📖 *面试题* 为什么必须用引用？ 避免无限递归 [fn:6]
+  2. 无自定义拷贝构造函数，编译器合成 *隐式拷贝构造函数* ：对 类成员 进行 *浅拷贝* （也能用 ==default= ），需要 *深拷贝* 类成员，需要自定义拷贝构造函数
+  3. 使用 ==delete= 禁止拷贝
+#+begin_src cpp
+类名(const T&) {}   //  & 必须有，const可选但是建议
+#+end_src
+
+
+** 转换构造函数
+:PROPERTIES:
+:ID:       a024d9ab-e3be-45a9-8cbd-1eb292074833
+:END:
+- 转换构造函数 :: =基本类型 -> 类= ，单参数（或 带默认值的多参数）的构造函数，单个参数类型 *隐式转换* 为类类型
+  1. 多参数（不带默认值）也可以发生 隐式转换（通过 [[id:c794bd12-f733-4f8d-99cb-b34555506975][列表初始化]]）[fn:7]
+  2. 隐式转换 *只能发生一次* [fn:8]
+  3. *避免非期望的隐式转换* ，使用 [[id:2f9e4a5c-e6fe-4006-a6df-0bbd7fce0ded][explicit]]（最佳实践）
+#+begin_example cpp
+类型(参数1) {}
+类型(参数1, 参数2=默认值...) {}
+#+end_example
+
+
+*** explicit
+:PROPERTIES:
+:ID:       2f9e4a5c-e6fe-4006-a6df-0bbd7fce0ded
+:END:
+- explicit :: 修饰构造函数，使其只能 *显式调用* ，防止意想不到的隐式转换 [fn:9]
+
+
+** 移动构造函数
+:PROPERTIES:
+:ID:       51145ff8-f7e2-462d-96ec-01cb9e35c2cc
+:END:
+- 移动构造函数 :: （cpp11）参数为右值引用的构造函数，通过 “窃取” 源右值对象的资源初始化新对象，避免拷贝开销
+  1. 右值（或 std::move 将左值转右值）初始化对象时 *调用*
+  2. 编译器合成 *隐式移动构造* 条件：
+     1) 无自定义 [[id:cddd975a-e5ee-4db6-9749-dab49f962796][拷贝构造]]、拷贝赋值、移动构造、移动赋值、析构函数
+     2) 可移动的移动，其余复制
+#+begin_example cpp
+类名(类名&&) {}
+#+end_example
+
+
+** 初始化列表构造函数
+:PROPERTIES:
+:ID:       fabc592f-3ef4-4ea3-9700-abfc4300f73b
+:END:
+- 初始化列表构造函数 :: （cpp11）参数为 =std::initializer_list<T>= 的构造函数，支持 [[id:c794bd12-f733-4f8d-99cb-b34555506975][列表初始化]]（优先级高于普通多参数构造函数）
+#+begin_example cpp :includes <initializer_list>
+类名(std::initializer_list<T> list) {}
+
+std::vector v{1,2,3}; // 示例
+#+end_example
 
 
 * Footnotes
-[fn:6]
-#+begin_src cpp :results output :namespaces std :includes <iostream>
-class Foo
-{
-private:
-    int m_x {};    // default member initializer (因为 成员初始化列表 -> 该值初始化被 忽略)
-    int m_y { 2 }; // default member initializer (will be used)
-    int m_z;       // 默认初始化（随机值）
 
-public:
-    Foo(int x)
-        : m_x { x } // 成员初始化器
-    {
-        std::cout << "Foo constructed\n";
-    }
-
-    void print() const
-    {
-        std::cout << "Foo(" << m_x << ", " << m_y << ", " << m_z << ")\n";
-    }
-};
-
-int main()
-{
-    Foo foo { 6 };
-    foo.print();
-
-    return 0;
-}
-#+end_src
-
-#+RESULTS:
-: Foo constructed
-: Foo(6, 2, 32764)
-
-[fn:5]
-#+begin_src cpp :results output :namespaces std :includes <iostream>
-#include <algorithm> // for std::max
-
-class Foo
-{
+[fn:1]
+#+begin_src cpp :results output :namespaces std :includes <iostream> <algorithm>
+class Foo {
 private:
     int m_x{};
     int m_y{};
 
 public:
-    Foo(int x, int y)                         // 这里使用 成员初始化列表 进行初始化
-        : m_y { std::max(x, y) }, m_x { m_y } // FIXME 先初始化 m_x，但是 m_x 使用 m_y 初始化，因此出错
-    {
-    }
+    // FIXME 先初始化 m_x，但是 m_x 使用 m_y 初始化，因此出错
+    Foo(int x, int y) : m_y { std::max(x, y) }, m_x { m_y } { }
 
-    void print() const
-    {
+    void print() const {
         std::cout << "Foo(" << m_x << ", " << m_y << ")\n";
     }
 };
 
-int main()
-{
+int main() {
     Foo foo { 6, 7 };
     foo.print();
+}
+#+end_src
 
-    return 0;
+[fn:2]
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+class Foo {
+private:
+    int m_x {};                           // 1. 默认初始化器 (后续被 6 覆盖)
+    int m_y { 2 };                        // 1. 默认初始化器 (使用)
+    int m_z;                              // 1. 默认初始化（随机值）
+
+public:
+    Foo(int x) : m_x { x } {              // 2. 成员初始化列表
+        std::cout << "Foo constructed\n"; // 4. 构造函数体
+    }
+
+    void print() const {
+        std::cout << "Foo(" << m_x << ", " << m_y << ", " << m_z << ")\n";
+    }
+};
+
+int main() {
+    Foo foo { 6 };
+    foo.print();
+}
+#+end_src
+
+#+RESULTS:
+: Foo constructed
+: Foo(6, 2, 32765)
+
+[fn:3]
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+class Foo {
+private:
+    int m_x { };
+    int m_y { };
+
+public:
+    Foo(int x=0, int y=0) : m_x { x } , m_y { y } {     // 这是默认构造函数
+        std::cout << "Foo(" << m_x << ", " << m_y << ") constructed\n";
+    }
+};
+
+int main() {
+    Foo foo1{};     // 调用 Foo(int, int)
+    Foo foo2{6, 7}; // 调用 Foo(int, int)
+    Foo foo3;       // 调用 Foo(int, int)
+}
+#+end_src
+
+#+RESULTS:
+: Foo(0, 0) constructed
+: Foo(6, 7) constructed
+: Foo(0, 0) constructed
+
+#+name: 避免有歧义的调用
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+class Foo {
+private:
+    int m_x {};
+    int m_y {};
+public:
+    Foo() {                                        // 默认构造函数
+        std::cout << "Foo constructed\n";
+    }
+    Foo(int x=1, int y=2) : m_x { x }, m_y { y } { // 默认构造函数
+        std::cout << "Foo(" << m_x << ", " << m_y << ") constructed\n";
+    }
+};
+
+int main() {
+    //Foo foo{};   FIXME 有歧义的函数调用
+    Foo foo {1};
+}
+#+end_src
+
+#+RESULTS: 避免有歧义的调用
+: Foo(1, 2) constructed
+
+[fn:4]
+#+begin_src cpp
+Foo foo{}; // 值初始化, calls Foo() default constructor
+Foo foo2;  // 默认初始化, calls Foo() default constructor
+#+end_src
+
+[fn:5]
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+class User {
+private:
+    int m_a;
+    int m_b {};
+public:
+    User() {}             // NOTE 用户定义 默认构造函数：m_a 为随机值
+    int a() const { return m_a; }
+    int b() const { return m_b; }
+};
+
+class Default {
+private:
+    int m_a;
+    int m_b {};
+public:
+    Default() = default;  // NOTE =default 默认构造函数：m_a 为 0
+    int a() const { return m_a; }
+    int b() const { return m_b; }
+};
+
+class Implicit {
+private:
+    int m_a;
+    int m_b {};
+public:
+                          // NOTE 隐式默认构造函数：m_a 为 0
+    int a() const { return m_a; }
+    int b() const { return m_b; }
+};
+
+int main() {
+    User user{};
+    std::cout << user.a() << ' ' << user.b() << '\n';
+
+    Default def{};
+    std::cout << def.a() << ' ' << def.b() << '\n';
+
+    Implicit imp{};
+    std::cout << imp.a() << ' ' << imp.b() << '\n';
+}
+#+end_src
+
+#+RESULTS:
+: 73728 0
+: 0 0
+: 0 0
+
+[fn:6]
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+class MyClass {
+public:
+    MyClass(MyClass obj) { /* ... */ } // 错误：按值传递
+};
+
+int main() {
+    MyClass a;
+    MyClass b(a); // FIXME 调用拷贝构造函数时，需要先拷贝 a 到 obj，又触发拷贝构造函数 无限递归
+}
+#+end_src
+
+[fn:7]
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+class Foo {
+public:
+    // NOTE Foo(int x, int y = 1) 同理
+    Foo(int x) {
+        cout << "发生隐式转换：调用 Foo(int) -> " << x << '\n';
+    }
+
+    // NOTE Foo(int x = 1, int y = 1) 同理
+    Foo(int x, int y ) {
+        cout << "发生隐式转换：调用 Foo(int, int) -> " << x << ' ' << y << '\n';
+    }
+};
+
+void printFoo(Foo f) {}
+
+int main() {
+    printFoo(5);       // 发生隐式转换：调用 Foo(int)
+    printFoo({6, 7});  // 发生隐式转换：调用 Foo(int, int)
+}
+#+end_src
+
+[fn:8]
+#+begin_src cpp :results output :namespaces std :includes <iostream> <string> <string_view>
+class Employee {
+public:
+    Employee(std::string_view name) {}
+};
+
+void printEmployee(Employee e) {}
+
+int main() {
+    // const char* -> 隐式转换为 string_view -> 隐式转换为 Employee -> 调用 Employee(std::string_view)
+    printEmployee("Joe"); // FIXME 需要2次隐式转换，但隐式转换只能发送1次
+    // NOTE 解决方法：printEmployee("Jos"sv) 或 printEmployee(Employee{ "Joe" })
+}
+#+end_src
+
+[fn:9]
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+class Foo {
+public:
+    explicit Foo() {}
+    explicit Foo(int x) {}
+};
+
+Foo getFoo() {
+    return Foo{ };   // ok
+    return { };      // FIXME 不能隐式转换 initializer list 到 Foo()
+
+    return Foo{ 5 }; // ok
+    return 5;        // FIXME 不能隐式转换 int 到 Foo(int)
+    return { 5 };    // FIXME 不能隐式转换 initializer list 到 Foo(int)
+}
+
+int main() {
+    getFoo();
 }
 #+end_src

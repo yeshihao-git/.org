@@ -1,18 +1,662 @@
 :PROPERTIES:
 :ID:       7506c85b-141e-40c0-a120-99674925bebc
 :END:
-#+title: 模板(template)
+#+title: 模板
 #+filetags: cpp
 
-* 模板(template)
-1. 用于 *编译期代码生成* 的一种机制，通过 [[id:9148c346-c9dd-4480-9b37-25d448987e98][模板参数]] 实现泛型编程；可以在不重复写代码的情况下支持多种数据类型
+* 模板
+- 模板 :: 通过 [[id:989d5785-1969-44e3-856a-104f4752fed9][模板参数]] 定义 *类型无关* 、 *代码可复用* 的类/函数蓝图，在 *编译期生成代码* （模板实例化），支持模板定制化实现（[[id:b895d61b-fd1e-4474-875f-3b05c8d55575][模板特化]]）。分为：
+  1. [[id:51fd5ce2-b3fd-4a18-98c0-be1b42567bbe][函数模板]]
+  2. [[id:209cc8ba-b59d-4e3a-b7db-62d182871fa9][类模板]]
+  3. [[id:f8508a2a-bf76-451a-9e0f-42ce069838d3][别名模板]]
+  按参数特性分类：
+  1. 普通模板
+  2. [[id:53d73836-211e-45a8-8dae-28646c239980][可变参数模板]]
 
-2. *有哪些模板*
-   1) [[id:d296e2b2-3557-479c-ad2d-58c1600fbfd9][函数模板]]
-   2) [[id:d07f0b33-4003-44a4-a950-7435313ff677][类模板]]
+- 模板实例化 :: 在模板使用时，编译器根据 显式指定 或 隐式推导 实例化具体函数或类 的过程（在发生实例化的文件处 *复制* 一份模板，并将 模板参数 替换成 具体类型， *增加编译时间* ）
 
-3. *模板实例化* ：编译器 *根据 模板参数 生成具体类或函数* 的过程（在发生实例化的文件处 *复制* 一份模板，模板参数 -> 具体类型，因此会 *增加编译时间* ）
 
-4. [[id:af61d37e-a768-4cfb-bab5-b870f4f4d932][模板特化]]
+** 模板参数
+:PROPERTIES:
+:ID:       989d5785-1969-44e3-856a-104f4752fed9
+:END:
+- 模板参数 :: =template= 声明中用于表示 类型、常量、模板 的占位符。分为：
+  1. [[id:8e4d5e01-d613-4871-8eaa-5ea4dcdc8a61][类型模板参数]]
+  2. [[id:29f18fbc-5e5a-4ad1-a038-c55e80523925][非类型模板参数]]（常量参数）
+  3. 模板模板参数
 
-5. 为模板起别名：[[id:73c5cb24-1bb3-4f91-a80b-043d701ca570][别名模板]]
+- 模板参数推导 :: 调用模板时，根据传入的实参类型 推导 模板参数
+
+
+*** 类型模板参数
+:PROPERTIES:
+:ID:       8e4d5e01-d613-4871-8eaa-5ea4dcdc8a61
+:END:
+- 类型模板参数 :: =template <typename T>= 声明中的 =T= ，表示任意数据类型的占位符
+  1. 能用 [[id:bee683d2-eec4-45a8-af02-be369d182e8d][auto]] 推导 返回值类型
+  2. 可以有 *默认值*
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+template <typename T = int, typename U> // NOTE T 默认值为 int
+auto max(T x, U y) {                    // 如果这里不用 auto ，使用 T，则结果为 3
+    return (x < y) ? y : x;
+}
+
+int main() {
+    std::cout << max(2, 3.5) << '\n';   // 结果为 3.5
+}
+#+end_src
+
+#+RESULTS:
+: 3.5
+
+
+*** 非类型模板参数
+:PROPERTIES:
+:ID:       29f18fbc-5e5a-4ad1-a038-c55e80523925
+:END:
+- 非类型模板参数 :: =template <类型 N>= 声明中的 =N= ，表示 *编译期可知常量*
+  1. 必须传入 [[id:127cefde-76f3-437b-ba9c-72ed8e928498][常量表达式]]
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+template <int N>            // 非类型模板参数 一般用 N 表示
+void print() {
+    std::cout << N << '\n'; // use value of N here
+}
+
+int main() {
+    int x { 5 };
+    print<5>();             // 将 5 传入 非类型模板参数
+    // print<x>();          FIXME：非类型模板参数必须是 常量表达式
+}
+#+end_src
+
+#+RESULTS:
+: 5
+
+
+** 模板特化
+:PROPERTIES:
+:ID:       b895d61b-fd1e-4474-875f-3b05c8d55575
+:END:
+- 模板特化 :: 模板的定制化实现（ *why？* 模板的通用实现无法满足需求）
+  1. 头文件中，普通模板 放在 特化模板 *前* （编译器需要看到 普通模板 和 特化模板 的完整定义，才能使用模板特化）
+  *分为* ：
+  1. [[id:8a066df7-1160-449c-8015-df3f0dde4a28][模板全特化]]：模板参数 全部被特化
+  2. 模板偏特化：模板参数 部分被特化（ *只能用于 类模板* ）
+
+
+*** 模板全特化
+:PROPERTIES:
+:ID:       8a066df7-1160-449c-8015-df3f0dde4a28
+:END:
+**** 函数模板全特化
+:PROPERTIES:
+:ID:       137280f9-f0fe-4306-97bd-2f180beeb047
+:END:
+- 函数模板全特化 :: 函数模板的模板参数全部被特化
+  1. 全特化的函数模板 *不会隐式inline* ，在[[id:fbf786c2-5b6e-47a1-81b9-c1c644b567bb][头文件]]中需要手动 inline [fn:41]
+  2. 可以用 [[id:82d44637-d24d-485d-847c-b59ad9d88048][=delete]] 删除 特化版本的函数
+  3. *匹配优先级* ：非模板函数 -> 模板函数
+
+
+**** 类模板全特化
+:PROPERTIES:
+:ID:       43cfa4f3-6f6f-4a37-b465-1ec392ffe201
+:END:
+- 类模板全特化 :: 类模板的模板参数全部被特化
+  1. 全特化的类模板 视为 *独立的类* [fn:42]
+  2. *优先级* ：特化类模板 -> 非特化类模板
+
+
+**** 成员函数全特化
+:PROPERTIES:
+:ID:       f77ed488-986d-4479-a5a5-54c721a32528
+:END:
+- 成员函数全特化 :: 成员函数模板的模板参数全部被特化
+  1. 全特化的成员函数模板 *不会隐式内联* ，在[[id:fbf786c2-5b6e-47a1-81b9-c1c644b567bb][头文件]]中需要手动 inline
+  2. 特化方法：
+     1) 显式特化 成员函数模板（ *最佳实践* ）[fn:43]
+     2) 显式特化 类模板，再去使用特化类模板中的成员函数（冗余） [fn:44]
+
+
+
+** 函数模板
+:PROPERTIES:
+:ID:       51fd5ce2-b3fd-4a18-98c0-be1b42567bbe
+:END:
+- 函数模板 :: 函数蓝图，在函数调用时 编译器根据 *显式指定* 或 *实参隐式推导* 实例化具体类型的函数
+  1. *底层* ：编译期 编译器在 *函数模板调用* 处 生成实例化的函数， *增加编译时间* [fn:1]
+  2. 普通函数调用语法 *优先匹配* 非模板函数，而不是模板实例化后同样可行的函数（原因：优先选择更特殊版本）[fn:2]
+  3. 能用 [[id:82d44637-d24d-485d-847c-b59ad9d88048][=delete]] 删除某些实例化版本 [fn:3]
+  4. 不同数量 类型模板参数 实现 *函数模板重载* [fn:4]
+  5. 函参隐式推导会生成不同的实例化版本 [fn:5]
+  6. 编译器需要看到模板完整定义，才能使用（模板声明定义都在头文件中） [fn:6]
+
+
+** 类模板
+:PROPERTIES:
+:ID:       209cc8ba-b59d-4e3a-b7db-62d182871fa9
+:END:
+- 类模板 :: 类蓝图，类模板被首次使用时 编译器根据 *显式指定* 或 *（cpp17）CTAD 类模板实参推导* 实例化具体类型的类
+  1. *底层* ：编译期 编译器在 *类模板使用* 处 生成实例化的类， *增加编译时间* [fn:7]
+  2. 编译器需要看到模板完整定义才能使用（模板声明定义都在头文件中）
+  3. 类模板中的 *成员函数* [fn:8]
+     - 类模板内部定义 *无需* 模板参数声明
+     - 类模板外部定义 *需要* 模板参数声明
+  4. 类模板中的类名可以简写 [fn:8]
+
+
+** 别名模板
+:PROPERTIES:
+:ID:       f8508a2a-bf76-451a-9e0f-42ce069838d3
+:END:
+- 别名模板 :: （cpp11）给复杂模板起 *别名* ，方便使用
+  1. 函数模板 起别名 [fn:9]
+  2. 类模板 起别名
+     - 已实例化的类模板：使用 *普通 using 别名* [fn:10]
+     - 未实例化的类模板：使用 *别名模板* [fn:11]
+
+
+** 可变参数模板
+:PROPERTIES:
+:ID:       53d73836-211e-45a8-8dae-28646c239980
+:END:
+- 可变参数模板 :: 声明中带有 =template <typename... Ts>= *模板参数包* 的模板（若为函数模板通常还带有 =Ts... args= *函数参数包* ），且模板内通过 =args...= *展开参数包*
+#+begin_src cpp :results outpt :includes <iostream>
+void printAll() {
+    std::cout << std::endl;
+}
+
+// Args&... args => 将Args展开(为很多类型)，应用到args上
+template <typename T, typename... Args>  // 模板参数包：Args
+void printAll(const T& first, const Args&... args) { // 函数参数包：args
+    std::cout << first << " ";
+    printAll(args...); // 参数包展开：递归调用
+}
+
+int main() {
+    printAll(1, 2.5, "Hello", 'A'); // 输出：1 2.5 Hello A
+}
+#+end_src
+
+#+RESULTS:
+: 1 2.5 Hello A
+
+* Footnotes
+
+[fn:1]
+#+name: 原始模板代码
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+template <typename T>
+T max(T x, T y) {
+    return (x < y) ? y : x;
+}
+
+int main() {
+    std::cout << max<int>(1, 2) << '\n'; // 实例化并调用函数 max<int>(int, int)
+    std::cout << max<int>(4, 3) << '\n';
+}
+#+end_src
+
+#+name: 模板实例化后的代码
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+template <typename T>
+T max(T x, T y);
+
+template<>
+int max<int>(int x, int y) {             // 实例化后的 函数
+    return (x < y) ? y : x;
+}
+
+int main() {
+    std::cout << max<int>(1, 2) << '\n'; // 实例化并且调用 max<int>(int, int)
+    std::cout << max<int>(4, 3) << '\n'; // 调用已经实例化的 max<int>(int, int)
+}
+#+end_src
+
+[fn:2]
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+template <typename T>  // 函数模板
+void print(T x) {
+    std::cout << x;
+}
+
+void print(bool x) {   // 普通函数
+    std::cout << std::boolalpha << x;
+}
+
+int main() {
+    print<bool>(true); // NOTE 显式指定，调用 print<bool>(bool) -- prints 1
+    std::cout << '\n';
+    print<>(true);     // NOTE 实参类型隐式推导，调用 print<bool>(bool) -- prints 1
+    std::cout << '\n';
+    print(true);       // NOTE 普通函数调用语法 优先匹配 非模板函数，调用 print(bool) -- prints true
+    std::cout << '\n';
+}
+#+end_src
+
+#+RESULTS:
+: 1
+: 1
+: true
+
+[fn:3]
+#+begin_src cpp :results output :namespaces std :includes <iostream> <string>
+template <typename T>
+T addOne(T x) {
+    return x + 1;
+}
+
+// delete 函数模板特化 告诉编译器 addOne(const char*) 应该产生一个编译错误
+template <>
+const char* addOne(const char* x) = delete;
+
+int main() {
+    std::cout << addOne("Hello, world!") << '\n';      // FIXME
+}
+#+end_src
+
+[fn:4]
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+template <typename T>
+auto add(T x, T y) {
+    return x + y;
+}
+
+template <typename T, typename U>
+auto add(T x, U y) {
+    return x + y;
+}
+
+template <typename T, typename U, typename V>
+auto add(T x, U y, V z) {
+    return x + y + z;
+}
+
+int main() {
+    std::cout << add(1.2, 3.4) << '\n'; // 实例化并调用 add<double>()
+    std::cout << add(5.6, 7) << '\n';   // 实例化并调用 add<double, int>()
+    std::cout << add(8, 9, 10) << '\n'; // 实例化并调用 add<int, int, int>()
+}
+#+end_src
+
+#+RESULTS:
+: 4.6
+: 12.6
+: 27
+
+[fn:5]
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+template <typename T>
+void printIDAndValue(T value) {
+    static int id{ 0 };
+    std::cout << ++id << ") " << value << '\n';
+}
+
+int main() {
+    printIDAndValue(12);   // printIDAndValue<int>()
+    printIDAndValue(13);   // printIDAndValue<int>()
+
+    printIDAndValue(14.5); // NOTE printIDAndValue<double>()，因此输出是 1) 14.5
+}
+#+end_src
+
+#+RESULTS:
+: 1) 12
+: 2) 13
+: 1) 14.5
+
+[fn:6]
+------------------------------------问题-------------------------------------------------
+一个源文件定义，另一个源文件前向声明，函数模板链接失败（普通函数链接成功）
+#+name: main.cpp
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+template <typename T>
+T addOne(T x); // 函数模板前向声明
+
+int main() {
+    std::cout << addOne(1) << '\n';
+    std::cout << addOne(2.3) << '\n';
+}
+#+end_src
+
+#+name: add.cpp
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+template <typename T>
+T addOne(T x) { // 函数模板定义
+    return x + 1;
+}
+// FIXME 链接错误：main.cpp 的 addOne调用处 编译器没看到完整定义，因此在 main.cpp 中没法实例化函数模板， addOne<int> addOne<double> 自然没法连接到实际函数
+#+end_src
+
+----------------------------------解决方法---------------------------------------------------
+模板代码 放入 头文件，include 进 源文件（编译器能在 源文件中看见完整的函数模板，需要时进行实例化）
+#+name: max.h
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+#ifndef MAX_H
+#define MAX_H
+
+template <typename T>
+T max(T x, T y) {
+    return (x < y) ? y : x;
+}
+
+#endif
+#+end_src
+
+#+name: foo.cpp
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+#include "max.h" // 导入 max<T>(T, T)
+
+void foo() {
+  std::cout << max(3, 2) << '\n';
+}
+#+end_src
+
+#+name: main.cpp
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+#include "max.h" // 导入 max<T>(T, T)
+
+void foo();      // 前向声明 foo函数
+
+int main() {
+    std::cout << max(3, 5) << '\n';
+    foo();
+}
+// NOTE foo.cpp、main.cpp 实例化了两个 max<int>(int, int) 却不会发生链接错误，原因在于 模板实例化的函数是隐式内联的（见：ODR）
+#+end_src
+
+[fn:7]
+#+name: 原始模板代码
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+template <typename T>
+struct Pair {
+    T first{};
+    T second{};
+};
+
+int main() {
+    Pair<int> p1{ 5, 6 };        // 实例化 Pair<int> 并且创建 p1
+    std::cout << p1.first << ' ' << p1.second << '\n';
+    Pair<double> p2{ 1.2, 3.4 }; // 实例化 Pair<double> 并且创建 p2
+    std::cout << p2.first << ' ' << p2.second << '\n';
+    Pair<double> p3{ 7.8, 9.0 }; // 使用 先前Pair<double>定义 创建 p3
+    std::cout << p3.first << ' ' << p3.second << '\n';
+}
+#+end_src
+
+#+name: 模板实例化后的代码
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+// Pair类模板 声明
+template <typename T>
+struct Pair;
+
+// 显式定义 Pair<int>
+template <> // 告诉编译器这是一个没有模板参数的模板类型
+struct Pair<int> {
+    int first{};
+    int second{};
+};
+
+// 显式定义 Pair<double>
+template <>
+struct Pair<double> {
+    double first{};
+    double second{};
+};
+
+int main() {
+    Pair<int> p1{ 5, 6 };
+    std::cout << p1.first << ' ' << p1.second << '\n';
+    Pair<double> p2{ 1.2, 3.4 };
+    std::cout << p2.first << ' ' << p2.second << '\n';
+    Pair<double> p3{ 7.8, 9.0 };
+    std::cout << p3.first << ' ' << p3.second << '\n';
+}
+#+end_src
+
+[fn:8]
+#+begin_src cpp :results output :namespaces std :includes <iostream> <ios>
+template <typename T>
+class Pair {
+private:
+    T m_first{};
+    T m_second{};
+public:
+    // NOTE 类模板内部定义成员函数：无需 模板参数声明（template <typename T>）
+    // NOTE 注入的类名：类模板内部使用 类名，无需Pair<T>
+    Pair(const T& first, const T& second)
+        : m_first{ first }, m_second{ second } { }
+
+    bool isEqual(const Pair<T>& pair);
+};
+
+// NOTE 类模板外部定义的成员函数：需要 模板参数声明（template <typename T>）
+template <typename T>
+bool Pair<T>::isEqual(const Pair<T>& pair) {
+    return m_first == pair.m_first && m_second == pair.m_second;
+}
+
+int main() {
+    Pair p1{ 5, 6 }; // 使用 CTAD：从实参推导出 Pair<int>
+    std::cout << std::boolalpha << "isEqual(5, 6): " << p1.isEqual( Pair{5, 6} ) << '\n';
+    std::cout << std::boolalpha << "isEqual(5, 7): " << p1.isEqual( Pair{5, 7} ) << '\n';
+}
+#+end_src
+
+#+RESULTS:
+: isEqual(5, 6): true
+: isEqual(5, 7): false
+
+[fn:9]
+#+name: 使用 别名模板 简化 二维数组（std::array）使用
+#+begin_src cpp :results output :namespaces std :includes <iostream> <array>
+// NOTE why？ 3x4矩阵，需要反着写，反直觉
+// std::array<std::array<int, 4>, 3> arr {{
+//    { 1, 2, 3, 4 },
+//    { 5, 6, 7, 8 },
+//    { 9, 10, 11, 12 }}};
+
+// NOTE 为 矩阵（二维数组） 起别名，使用方式：Array2d<T, Row, Col>，不再反直觉
+template <typename T, std::size_t Row, std::size_t Col>
+using Array2d = std::array<std::array<T, Col>, Row>;
+
+template <typename T, std::size_t Row, std::size_t Col>
+void printArray(const Array2d<T, Row, Col> &arr) {
+    for (const auto& arow: arr) {
+        for (const auto& e: arow)
+            std::cout << e << ' ';
+        std::cout << '\n';
+    }
+}
+
+int main() {
+    Array2d<int, 3, 4> arr {{ // 初始化需要双括号
+        { 1, 2, 3, 4 },
+        { 5, 6, 7, 8 },
+        { 9, 10, 11, 12 }}};
+
+    printArray(arr);
+}
+#+end_src
+
+#+RESULTS:
+: 1 2 3 4
+: 5 6 7 8
+: 9 10 11 12
+
+[fn:10]
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+template <typename T>
+struct Pair {
+    T first{};
+    T second{};
+};
+
+template <typename T>
+void print(const Pair<T>& p) {
+    std::cout << p.first << ' ' << p.second << '\n';
+}
+
+int main() {
+    using Point = Pair<int>; // NOTE 为 已实例化的类模板 起别名
+    Point p { 1, 2 };
+
+    print(p);
+}
+#+end_src
+
+[fn:11]
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+template <typename T>
+struct Pair {
+    T first{};
+    T second{};
+};
+
+template <typename T>
+using Coord = Pair<T>; // NOTE 别名模板，为 还没实例化的类模板 起别名
+
+// Our print function template needs to know that Coord's template parameter T is a type template parameter
+template <typename T>
+void print(const Coord<T>& c) {
+    std::cout << c.first << ' ' << c.second << '\n';
+}
+
+int main() {
+    Coord<int> p1 { 1, 2 }; // Pre C++-20: We must explicitly specify all type template argument
+    Coord p2 { 1, 2 };      // In C++20, we can use alias template deduction to deduce the template arguments in cases where CTAD works
+
+    std::cout << p1.first << ' ' << p1.second << '\n';
+    print(p2);
+}
+#+end_src
+
+[fn:41]
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+template <typename T>
+void print(const T& t) {
+    std::cout << t << '\n';
+}
+
+// NOTE 完全特化版本 print<double>，不是隐式inline，头文件中需要手动inline
+template<>
+void print<double>(const double& d) {
+    std::cout << std::scientific << d << '\n';
+}
+
+int main() {
+    print(5);
+    print(6.7);
+}
+#+end_src
+
+#+RESULTS:
+: 5
+: 6.700000e+00
+
+[fn:42]
+#+begin_src cpp :results output :namespaces std :includes <iostream> <cstdint>
+// 非特化类模板
+template <typename T>
+class Storage8 {
+private:
+    T m_array[8];
+public:
+    void set(int index, const T& value) {
+        m_array[index] = value;
+    }
+
+    const T& get(int index) const {
+        return m_array[index];
+    }
+};
+
+// NOTE 全特化类模板，特化为 Storage8<bool>
+template <>
+class Storage8<bool> {
+private:
+    std::uint8_t m_data{};
+public:
+    void set(int index, bool value) {
+        auto mask{ 1 << index };
+        if (value)
+            m_data |= mask;
+        else
+            m_data &= ~mask;
+    }
+
+    bool get(int index) {
+        auto mask{ 1 << index };
+        return (m_data & mask);
+    }
+};
+#+end_src
+
+[fn:43]
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+template <typename T>
+class Storage {
+private:
+    T m_value {};
+public:
+    Storage(T value)
+      : m_value { value } {}
+
+    void print() {
+        std::cout << m_value << '\n';
+    }
+};
+// NOTE 原理：Storage<T> --编译器隐式特化--> Storage<double> --仅显式特化--> Storage<double>::print()
+template<>
+void Storage<double>::print() {
+    std::cout << std::scientific << m_value << '\n';
+}
+
+int main() {
+    Storage i { 5 };
+    Storage d { 6.7 }; // 隐式实例化 Storage<double>
+    i.print(); // 调用 Storage<int>::print (由 Storage<T>)
+    d.print(); // 调用 Storage<double>::print (调用 显式特化的 Storage<double>::print())
+}
+#+end_src
+
+[fn:44]
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+// NOTE 原理：Storage<T> --显式特化--> Storage<double> --显式特化--> Storage<double>::print()
+template <typename T>
+class Storage {
+private:
+    T m_value {};
+public:
+    Storage(T value)
+      : m_value { value } {}
+
+    void print() {
+        std::cout << m_value << '\n';
+    }
+};
+
+// 显式特化类模板 Storage<double> -> 显得冗余
+template <>
+class Storage<double> {
+private:
+    double m_value {};
+public:
+    Storage(double value)
+      : m_value { value } { }
+
+    void print();
+};
+
+void Storage<double>::print() {
+    std::cout << std::scientific << m_value << '\n';
+}
+
+int main() {
+    Storage i { 5 };
+    Storage d { 6.7 }; // uses explicit specialization Storage<double>
+
+    i.print(); // calls Storage<int>::print (instantiated from Storage<T>)
+    d.print(); // calls Storage<double>::print (called from explicit specialization of Storage<double>)
+}
+#+end_src

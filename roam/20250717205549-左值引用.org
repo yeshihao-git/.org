@@ -1,93 +1,235 @@
 :PROPERTIES:
 :ID:       1f772bce-0f88-46a2-ab44-c9bf04b30653
 :END:
-#+title: 引用(左值引用)
+#+title: 引用
 #+filetags: cpp
 
-* 引用(左值引用) [[https://www.learncpp.com/cpp-tutorial/lvalue-references/][learncpp12.3]]
-1. 引用是被引用对象的 *别名* ；必须初始化，后续不能改变引用的对象
-
-2. 引用需要和被引用对象的类型 *一致* ，如果不同，编译器会尝试进行 [[id:9c9c2b6a-92d9-431f-9f25-7f588848596a][隐式类型转换]]
-   #+begin_src cpp :results output :namespaces std :includes <iostream>
-   int main()
-   {
-       int x { 5 };
-       int& ref { x };            // okay: referenced type (int) matches type of initializer
-
-       double d { 6.0 };
-       int& invalidRef { d };     // invalid: conversion of double to int is narrowing conversion, disallowed by list initialization
-       double& invalidRef2 { x }; // 这里 x 被编译器隐式转换为 double，此时是右值，左值引用无法绑定右值；invalid: non-const lvalue reference can't bind to rvalue (result of converting x to double)
-
-       return 0;
-   }
-   #+end_src
-
-3. *悬空引用* ：被引用对象 在 引用 之前销毁（ *引用是不会被销毁的，因为它只是一个别名、一个编译期的符号* ）
-   在函数中返回 *const左值引用绑定的临时值* ，会导致 悬空引用，非常经典的例子见：[[id:119083e2-90b1-4ac8-8938-4fa0b68b304a][按引用返回]]
-
-4. *左值引用 与 const*
-   *核心* ：通过该引用无法修改被引用对象（非const引用要求被引用对象必须可修改）
-   - 非const左值引用 :: 不能绑定 const左值或右值 [fn:1]
-   - const左值引用 :: 可以绑定 [fn:2] [[https://www.learncpp.com/cpp-tutorial/lvalue-references-to-const/][learncpp12.4]]
-     1. 常量
-     2. 非常量
-     3. 临时对象（eg：字面量、表达式生成的临时对象）
-     #+begin_src cpp :results output :namespaces std :includes <iostream>
-     int main()
-     {
-         int x { 5 };              // x is a modifiable lvalue
-         const int& ref { x };     // 绑定 非const左值
-         const int& ref2 { 6 };    // 绑定 右值，延长临时对象生命周期和引用一致
-
-         std::cout << ref << '\n'; // okay: we can access the object through our const reference
-         //ref = 7;                // error: we can not modify an object through a const reference
-
-         x = 6;                    // okay: x is a modifiable lvalue, we can still modify it through the original identifier
-         std::cout << ref2 << '\n';
-         return 0;
-     } // ref2 和 临时对象 此处销毁
-     #+end_src
-
-     #+RESULTS:
-     : 5
-     : 6
-
-     为什么可以绑定右值？ *创建临时对象，用右值初始化它，再用引用绑定该临时对象* ； *临时对象的生命周期* 延长到和引用一致
-
-     + 使用场景 :: [[https://www.learncpp.com/cpp-tutorial/pass-by-lvalue-reference/][learncpp12.5]]： *作为函数参数* -> 开销小、不会修改传入对象、能接收多种值（const左值、非const左值、右值）
-       - 背景 :: 值传递对于大的对象，开销很大（复制 -> 操作 -> 销毁）；引用传递开销小，但是可能修改原始对象，且只能接收 非const左值
+* 引用
+- 引用 :: 给一个对象起 *别名* ，必须初始化，后续不能改变引用的对象。分为：
+  1. [[id:2399a946-50ba-4166-88d0-0c6410892ca0][左值引用]]
+  2. [[id:78a7c695-510d-4b03-a1e1-055d32a034cf][右值引用]]
 
 
+** 左值
+:PROPERTIES:
+:ID:       c80a13d1-c8f5-4574-8cfa-d948dc746e51
+:END:
+- 左值 :: 有名字、有地址、持久值
 
-* Footnotes
-[fn:2]
-#+begin_src cpp :results output :namespaces std :includes <iostream>
+
+*** 左值引用
+:PROPERTIES:
+:ID:       2399a946-50ba-4166-88d0-0c6410892ca0
+:END:
+- 左值引用 :: =type&= ，给[[id:c80a13d1-c8f5-4574-8cfa-d948dc746e51][左值]]起 *别名* ，必须初始化，后续不能改变引用的对象。分为：
+  1. [[id:b12cc455-a1b9-4216-a445-ab36c6d6a50f][const左值引用]]
+  2. [[id:46a489d4-e097-44bb-b5a5-62705d2f0297][非const左值引用]]
+  3. [[id:a0e47bbc-43d7-4a3f-acc4-150741ade23e][悬空引用]]
+
+
+**** const左值引用
+:PROPERTIES:
+:ID:       b12cc455-a1b9-4216-a445-ab36c6d6a50f
+:END:
+- const左值引用 :: 能绑定
+  1. 左值
+  2. [[id:7d0a7aab-3355-404e-af3a-ea3d0353fc61][const]]左值
+  3. 右值（ *为什么可以绑定右值？* 创建临时对象，用右值初始化它，引用绑定该临时对象，临时对象的生命周期 延长到和引用一致）
+#+begin_src cpp
 /* 常量 */
 const int a = 10;
-const int& ra = a;  // 合法：引用常量
+const int& ra = a;           // 合法：绑定 const左值（常量）
 
 /* 非常量 */
 int b = 20;
-const int& rb = b;  // 合法：引用非常量（但通过rb无法修改b）
+const int& rb = b;           // 合法：绑定 普通左值（非常量）
 const int c = 30;
-// int& rc = c;  // FIXME：非常量引用不能绑定到常量
+// int& rc = c;              // FIXME：非常量引用不能绑定到常量
 
-/* 临时对象 */
-const int& ref1 = 100;       // 合法：绑定到临时对象100
-const int& ref2 = 20 + 30;   // 合法：绑定到表达式生成的临时对象
+/* 右值 */
+const int& ref1 = 100;       // 合法：绑定 字面量100
+const int& ref2 = 20 + 30;   // 合法：绑定 表达式生成的临时对象
 // int& ref3 = 100;          // FIXME：普通引用不能绑定临时对象
 #+end_src
 
 
-[fn:1]
+**** 非const左值引用
+:PROPERTIES:
+:ID:       46a489d4-e097-44bb-b5a5-62705d2f0297
+:END:
+- 非const左值引用 :: 能绑定左值，不能绑定 *右值* 、 *const左值* [fn:1]
+#+name: 为什么不能绑定？
+#+begin_comment
+核心在于：非const左值引用要求被引用对象可修改，而 右值、const左值 都不可修改
+#+end_comment
+
+
+**** 悬空引用
+:PROPERTIES:
+:ID:       a0e47bbc-43d7-4a3f-acc4-150741ade23e
+:END:
+- 悬空引用 :: 被引用对象销毁，则引用变为悬空引用 [fn:2]
+
+
+
+** 右值
+:PROPERTIES:
+:ID:       25d69b3d-61fb-472b-8eef-a7ebf78dbd1c
+:END:
+- 右值 :: 无名字、无地址、临时值（eg：[[id:83a02125-329f-4097-ac5e-b14fbe1240ab][字面量]]、函数返回临时值、表达式生成的临时对象）
+  1. 可以激活 [[id:0512d335-6d3f-4ebc-9021-88424c326876][移动语义]]
+  2. 通过[[id:78a7c695-510d-4b03-a1e1-055d32a034cf][右值引用]]绑定，并修改值
+  3. 当左值出现在右边时，通过 [[id:7285203f-83ad-4954-ad9c-9175eba4c5c3][平凡转换]] 左值隐式转换为右值
+
+
+*** 右值引用
+:PROPERTIES:
+:ID:       c9c3ab4b-7ccf-42bb-9202-0f212873c1ef
+:END:
+- 右值引用 :: （cpp11） =type&&= ，对[[id:25d69b3d-61fb-472b-8eef-a7ebf78dbd1c][右值]]的引用，只能绑定右值， *延长右值生命周期* 与右值引用一致，用于[[id:0512d335-6d3f-4ebc-9021-88424c326876][移动语义]]和[[id:bfc91713-c993-40b2-b9da-6301ceeb04f6][完美转发]]
+  1. *本质* 是[[id:c80a13d1-c8f5-4574-8cfa-d948dc746e51][左值]]
+  2. 函参中的 右值引用 可以参与[[id:a545a441-471f-45d4-8a7b-30767486357a][函数重载]]
+  3. 可以通过 非const右值引用 *修改右值*
 #+begin_src cpp :results output :namespaces std :includes <iostream>
-int main()
-{
-    int x { 5 };
-    int& ref { x };         // okay: non-const lvalue reference bound to a modifiable lvalue
-  const int y { 5 };
-    int& invalidRef { y };  // invalid: non-const lvalue reference can't bind to a non-modifiable lvalue
-    int& invalidRef2 { 0 }; // invalid: non-const lvalue reference can't bind to an rvalue
-  return 0;
+void fun(const int& lref) { // 左值引用版本
+  std::cout << "l-value reference to const: " << lref << '\n';
+}
+
+void fun(int&& rref) {      // NOTE 右值引用版本，参与函数重载
+  std::cout << "r-value reference: " << rref << '\n';
+}
+
+int main() {
+  int x{ 5 };
+  int& ref_l {x}; // 左值引用 绑定 左值x
+  int&& ref {5};  // 右值引用 绑定 右值5
+  ref = 6;        // NOTE 通过 非const右值引用 修改右值
+
+  fun(ref);       // NOTE 右值引用 是 左值，调用 左值引用版本
+  fun(x);         // 调用 左值引用版本
+  fun(ref_l);     // 调用 左值引用版本
+  fun(5);         // 调用 右值引用版本
 }
 #+end_src
+
+#+RESULTS:
+: l-value reference to const: 6
+: l-value reference to const: 5
+: l-value reference to const: 5
+: r-value reference: 5
+
+
+**** 万能引用
+:PROPERTIES:
+:ID:       b370e3eb-44b1-426d-9d28-3a6015a33bc0
+:END:
+- 万能引用 :: =T&&= ，使 *函数模板可以接收左/右值* 的引用，并根据 *引用折叠* 确定最终类型
+  1. 等于 [[id:78a7c695-510d-4b03-a1e1-055d32a034cf][右值引用]] + 类型模板参数
+
+- 引用折叠 :: 多个引用组合后简化为 [[id:2399a946-50ba-4166-88d0-0c6410892ca0][左值引用]]/[[id:78a7c695-510d-4b03-a1e1-055d32a034cf][右值引用]] [fn:3]
+  *规则* ：右值引用的右值引用 折叠为 右值引用，其他情况为 左值引用
+|----------+----------|
+| 组合方式 | 折叠结果 |
+|----------+----------|
+| T& &     | T&       |
+| T& &&    | T&       |
+| T&& &    | T&       |
+| T&& &&   | T&&      |
+|----------+----------|
+
+*存在的问题* ：
+以万能引用为形参的函数模板A 调用 函数B，万能引用捕获的参数传入B，B只会调用左值版本，原因在于 *右值引用是左值* ，解决方式：[[id:bfc91713-c993-40b2-b9da-6301ceeb04f6][完美转发]]
+
+***** 完美转发
+:PROPERTIES:
+:ID:       c15a68d1-ff7c-4b1d-bc2b-6a09598ba105
+:END:
+- 完美转发 :: （cpp11） =std::forward= 用于保持 函参的左右值属性[fn:4]
+
+
+** 引用限定符
+:PROPERTIES:
+:ID:       6d221341-46e5-4973-97db-7b30c2c59a35
+:END:
+- 引用限定符 :: 使用 =&= 、 =&&= 分别限定函数只能用于左值或右值，用于 *阻止旧标准可以对右值赋值*
+  1. 可参与 [[id:a545a441-471f-45d4-8a7b-30767486357a][函数重载]]
+
+* Footnotes
+
+[fn:1]
+#+begin_src cpp
+int main() {
+    int x { 5 };
+    int& ref { x };         // okay: 非const左值引用 绑定 可修改的左值
+    const int y { 5 };
+    int& invalidRef { y };  // FIXME: 非const左值引用 不可绑定 不能修改的左值
+    int& invalidRef2 { 0 }; // FIXME: 非const左值引用 不可绑定 右值
+}
+#+end_src
+
+[fn:2]
+#+name: 在函数中返回 const左值引用 绑定的临时值，导致 悬空引用
+#+begin_src cpp
+const int& returnByConstReference() {
+    return 5; // 生成临时对象，用5初始化，const int& 绑定到临时对象，临时对象在局部作用域结束后销毁，返回的 const int& 变成悬空引用
+}
+int main() {
+    const int& ref { returnByConstReference() }; // 这里的 ref 引用 returnByConstReference 返回的悬空引用
+    std::cout << ref;                            // FIXME 导致未定义行为
+}
+#+end_src
+
+[fn:3]
+#+begin_src cpp :results output :namespaces std :includes <iostream> <type_traits>
+template<typename T>
+void check_type() {
+    if (std::is_lvalue_reference<T>::value) {
+        std::cout << "左值引用" << std::endl;
+    } else if (std::is_rvalue_reference<T>::value) {
+        std::cout << "右值引用" << std::endl;
+    } else {
+        std::cout << "非引用类型" << std::endl;
+    }
+}
+
+int main() {
+    int x = 10;
+
+    typedef int&  lref;
+    typedef int&& rref;
+
+    cout << "int& & 的结果: ";
+    check_type<lref&>();  // int& & → int&
+
+    cout << "int& && 的结果: ";
+    check_type<lref&&>(); // int& && → int&
+
+    cout << "int&& & 的结果: ";
+    check_type<rref&>();  // int&& & → int&
+
+    cout << "int&& && 的结果: ";
+    check_type<rref&&>(); // int&& && → int&&
+}
+#+end_src
+
+[fn:4]
+#+begin_src cpp :results output :namespaces std :includes <iostream> <utility>
+void target(int& x) { std::cout << "左值引用: " << x << std::endl; }
+void target(int&& x) { std::cout << "右值引用: " << x << std::endl; }
+
+template<typename T>
+void forwarder(T&& arg) {
+    target(std::forward<T>(arg)); // NOTE 调用右值版本：完美转发
+    // target(arg);                       调用左值版本：forwarder(123) -> 根据 123 推导 T 为 int，则 arg 为 int&&类型（右值引用），右值引用本质为左值，因此调用 target左值版本
+}
+
+int main() {
+    int x = 42;
+    forwarder(x);      // 转发左值
+    forwarder(123);    // 转发右值
+}
+#+end_src
+
+#+RESULTS:
+: 左值引用: 42
+: 右值引用: 123

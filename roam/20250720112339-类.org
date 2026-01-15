@@ -1,180 +1,172 @@
 :PROPERTIES:
 :ID:       d63526f2-db09-4c79-8a1a-57d6a7d82ec9
 :END:
-#+title: 类(class)
+#+title: 类
 #+filetags: cpp
 
 * 类
-1. 用户定义的 [[id:99463280-0fa3-491e-82ae-2c3402272509][复合数据类型]]，将 [[id:372c18aa-a68a-47b2-a5b8-9685e7677a69][成员变量]] 和 [[id:3a39bdbf-179e-4dd8-aaf9-3aeb1d0c3863][成员函数]] 封装在一起，形成自己的一种类型
+- 类 :: 用户自定义的[[id:763eae87-6088-40cf-874a-c3f915865734][复合数据类型]]，由 [[id:372c18aa-a68a-47b2-a5b8-9685e7677a69][成员变量]] 和 [[id:3a39bdbf-179e-4dd8-aaf9-3aeb1d0c3863][成员函数]] 封装而成。是 [[id:a3778673-5028-4637-b8f2-85b1bf798587][面向对象]] 思想的体现
+  1. 分为：[[id:dba74038-4c01-4938-8947-24fa97149362][const对象]]、[[id:6ed3c764-31c1-4e51-aa7e-6968551dd1d1][非const对象]]
+  2. *访问权限* 、 *继承权限* 默认为 =private=
+  3. [[id:303fdeb8-0862-4df7-b589-781d175696f1][类对象大小]]
+  4. [[id:dd3f66ae-1137-4a20-9901-9dd0f3779531][类内成员声明顺序任意]]，若成员变量初始化存在依赖关系，声明顺序不能任意 [fn:1]
+  5. 打破封装性：[[id:25207988-90c0-4752-a3ff-c4c730f6887c][友元]]
+  6. 类的设计遵循 [[id:c35b6026-39f2-44c3-866a-f37e86b8c6fe][三五法则]]
 
-2. *面向对象三大特性* ：封装、[[id:7b0c3ac7-1b45-4b02-97a9-bdad067c03e9][继承]]、[[id:a9d73cec-1b32-45fd-88fc-e6649fd6abc2][多态]]
+*由哪些内容构成？*
+1. [[id:372c18aa-a68a-47b2-a5b8-9685e7677a69][成员变量]]
+2. 普通[[id:3a39bdbf-179e-4dd8-aaf9-3aeb1d0c3863][成员函数]]（含拷贝赋值、移动赋值之外的[[id:d39c4157-a6d7-430c-84aa-741878eaa828][重载运算符]]）
+3. 特殊成员函数（[[id:705ffd8d-ce2d-4a2f-809d-61bb83d1c2d4][默认构造函数]]、[[id:be44b0c2-d234-409f-b1a6-b447e365db37][析构函数]]、[[id:cddd975a-e5ee-4db6-9749-dab49f962796][拷贝构造函数]]、[[id:51145ff8-f7e2-462d-96ec-01cb9e35c2cc][移动构造函数]]、[[id:6ac8d18c-f96c-489c-9da6-885f952f5491][拷贝赋值运算符]]、移动赋值运算符）
 
-3. 默认 *访问权限* private（不能使用 [[id:382ff65a-9dfa-476a-8868-78b7418bcba8][聚合初始化]] [fn:1]）
-   默认 *继承权限* private
 
-4. *类的大小* ：见 [[id:2c06fba7-342c-42ba-a063-176b6c3c8a4d][类的大小]]
+** const对象
+:PROPERTIES:
+:ID:       dba74038-4c01-4938-8947-24fa97149362
+:END:
+- const对象 :: const修饰的对象 [fn:2]
+  1. [[id:372c18aa-a68a-47b2-a5b8-9685e7677a69][成员变量]] 创建后 *不可修改*
+  2. 只能调用 [[id:227d0a2c-3565-4c5d-b02e-199f2d59d390][const成员函数]]
+  3. *必须初始化*
 
-5. *初始化* 方式：[[id:50402d44-720e-42ed-b590-2b18d219acc1][构造函数]]（因为有 private 成员的类没法使用 聚合初始化）
-   不同初始化方式 都能调用 不同类型的构造函数 [fn:2] [[https://www.learncpp.com/cpp-tutorial/class-initialization-and-copy-elision/][learncpp14.15]]
 
-6. *销毁* 方式：[[id:be44b0c2-d234-409f-b1a6-b447e365db37][析构函数]]
+** 非const对象
+:PROPERTIES:
+:ID:       6ed3c764-31c1-4e51-aa7e-6968551dd1d1
+:END:
+- 非const对象 :: 未被const修饰的对象
+  1. [[id:372c18aa-a68a-47b2-a5b8-9685e7677a69][成员变量]] 创建后 *可修改*
+  2. 能调用 [[id:227d0a2c-3565-4c5d-b02e-199f2d59d390][const成员函数]]、[[id:8866b67b-495e-4ae3-b9c6-7326dbd794f6][非const成员函数]]
 
-7. *类内标识符次序 任意* （成员变量、成员函数）；但是如果用 一个成员变量 初始化 另一个成员变量， *需要考虑声明顺序*
-   #+name: 用一个成员变量 初始化 另一个成员变量
-   #+begin_src cpp :results output :namespaces std :includes <iostream>
-   struct Bad
-   {
-       int m_bad1 { m_data }; // 未定义行为: m_bad1 在 m_data 之前初始化
-       int m_bad2 { fcn() };  // 未定义行为: m_bad2 在 m_data 之前初始化（通过 fcn()）
 
-       int m_data { 5 };
-       int fcn() { return m_data; }
-   };
-   #+end_src
+** 类对象大小
+:PROPERTIES:
+:ID:       303fdeb8-0862-4df7-b589-781d175696f1
+:ROAM_ALIASES: 对象内存模型
+:END:
+|----------------+--------------------------------------------------------------------------------------|
+| 影响因素       | 说明                                                                                 |
+|----------------+--------------------------------------------------------------------------------------|
+| static成员变量 | 存储在全局区，不占类对象大小[fn:3]                                                   |
+| 虚函数         | 虚函数表指针：8字节[fn:4]                                                            |
+| 虚继承         | [[id:9f071537-cd60-49c4-97bc-47e3474b7c2e][虚基类]]指针：8字节[fn:5]                                                              |
+| 内存对齐规则   | 类大小为最大成员变量数据类型的倍数，类大小没达到就填充字节（优化内存访问效率）[fn:6] |
+|----------------+--------------------------------------------------------------------------------------|
+| 空类           | 1字节（用于区分空类对象）[fn:7]                                                      |
+| 单继承、多继承 | 基类非static成员变量 + 派生类非static成员变量                                        |
+|----------------+--------------------------------------------------------------------------------------|
 
-   *底层* ：编译器 将 成员函数 *隐式前置声明* ，将成员函数定义 紧跟在 类定义结束之后
-   #+name: 原始形式
-   #+begin_src cpp :results output :namespaces std :includes <iostream>
-   struct Foo
-   {
-       int z() { return m_data; } // m_data not declared yet
-       int x() { return y(); }    // y not declared yet
-       int y() { return 5; }
 
-       int m_data{};
-   };
-   #+end_src
+** 类内成员声明顺序任意
+:PROPERTIES:
+:ID:       dd3f66ae-1137-4a20-9901-9dd0f3779531
+:END:
+*how* ： 在底层 编译器 *类内隐式前置声明*  成员， *类外定义* 成员
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+struct Foo {
+    int z() { return m_data; } // m_data 目前还没声明
+    int x() { return y(); }    // y 目前还没声明
+    int y() { return 5; }
+    int m_data{};
+};
+#+end_src
+------------------------*编译器处理后*------------------------
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+struct Foo {
+    // 成员函数 类内 前置声明
+    int z(); // forward declaration of Foo::z()
+    int x(); // forward declaration of Foo::x()
+    int y(); // forward declaration of Foo::y()
+    int m_data{};
+};
 
-   #+name: 等价形式
-   #+begin_src cpp :results output :namespaces std :includes <iostream>
-   struct Foo
-   {
-       // 成员函数隐式前置声明
-       int z(); // forward declaration of Foo::z()
-       int x(); // forward declaration of Foo::x()
-       int y(); // forward declaration of Foo::y()
+// 成员函数 类外 定义
+int Foo::z() { return m_data; } // m_data 在上面已声明
+int Foo::x() { return y(); }    // y 在上面已声明
+int Foo::y() { return 5; }
+#+end_src
 
-       int m_data{};
-   };
 
-   // 成员函数定义
-   int Foo::z() { return m_data; } // m_data already declared above
-   int Foo::x() { return y(); }    // y already declared above
-   int Foo::y() { return 5; }
-   #+end_src
+** =default
+:PROPERTIES:
+:ID:       352e6f37-f95a-498a-bf02-97af7dea3b47
+:END:
+- =default :: （cpp11）让编译器为类的特殊成员函数生成合成的版本。能修饰：
+  1. [[id:705ffd8d-ce2d-4a2f-809d-61bb83d1c2d4][默认构造函数]]
+  2. [[id:be44b0c2-d234-409f-b1a6-b447e365db37][析构函数]]
+  3. [[id:cddd975a-e5ee-4db6-9749-dab49f962796][拷贝构造函数]]
+  4. [[id:51145ff8-f7e2-462d-96ec-01cb9e35c2cc][移动构造函数]]
+  5. [[id:6ac8d18c-f96c-489c-9da6-885f952f5491][拷贝赋值运算符]]
+  6. 移动赋值运算符
 
-8. *类 与 常量（const/constexpr）*[fn:5] [[https://www.learncpp.com/cpp-tutorial/const-class-objects-and-const-member-functions/][learncpp14.4]]
-   - const/constexpr对象：必须初始化
-   - const对象：不能调用 非const成员函数 [fn:6]；可以调用 const成员函数 ，不能修改 const对象的成员变量
-   - 非const对象：可以调用 非const成员函数 和 const成员函数
-   - constexpr聚合体对象：[fn:7] [[https://www.learncpp.com/cpp-tutorial/constexpr-aggregates-and-classes/][learncpp14.17]]
-   - constexpr非聚合体对象：需要有 constexpr构造函数 才能初始化[fn:8]  [[https://www.learncpp.com/cpp-tutorial/constexpr-aggregates-and-classes/][learncpp14.17]]
 
-9. *类 与 函数* [[https://www.learncpp.com/cpp-tutorial/temporary-class-objects/][learncpp14.13]]
-   - 函数参数 :: 可以传递 对象 或 *临时对象* （使用 =const &= 形式，减少复制开销）
-     #+begin_src cpp :results output :namespaces std :includes <iostream>
-     IntPair p { 1, 2 }; // 用 {1,2} 初始化 具名IntPair类型对象 p
-     IntPair { 1, 2 };   // 用 {1,2} 初始化 IntPair类型临时对象
-     { 1, 2 };           // 编译器将 {1,2} 转换为 IntPair类型临时对象
-     #+end_src
-   - 函数返回 :: 可以返回 对象 或 *临时对象* [fn:9]
+** 友元
+:PROPERTIES:
+:ID:       25207988-90c0-4752-a3ff-c4c730f6887c
+:END:
+- 友元 :: 打破类的封装性，获得所有成员的访问权限，友元关系是 *单向* 的， *无传递性* 。分为：
+  1. [[id:2e8aaccf-83d0-4c20-94eb-657164b52529][友元函数]]
+  2. [[id:1b52b575-6b47-4f5a-a301-3190cc07822b][友元类]]
 
-10. *命名规范* ：成员变量、成员函数 见 [[id:29f43a49-8123-4541-a02d-02c7ed24a042][命名规范]]
+
+*** 友元函数
+:PROPERTIES:
+:ID:       2e8aaccf-83d0-4c20-94eb-657164b52529
+:END:
+- 友元函数 :: 类内 用 =friend= 声明的 外部函数（全局函数、其他类的成员函数），不属于类的成员函数，但能访问类的所有成员
+  1. *定义方式* ：类外定义 [fn:8]
+  2. 定义在类内的友元函数是  *非成员函数* [fn:9]
+
+
+*** 友元类
+:PROPERTIES:
+:ID:       1b52b575-6b47-4f5a-a301-3190cc07822b
+:END:
+- 友元类 :: 类内 用 =friend= 声明的 另一个类，该友元类可以访问类的所有成员 [fn:10]
+
+
+** 三五法则
+:PROPERTIES:
+:ID:       c35b6026-39f2-44c3-866a-f37e86b8c6fe
+:END:
+- 三法则 :: [[id:cddd975a-e5ee-4db6-9749-dab49f962796][拷贝构造函数]]、[[id:6ac8d18c-f96c-489c-9da6-885f952f5491][拷贝赋值运算符]]、[[id:be44b0c2-d234-409f-b1a6-b447e365db37][析构函数]]。定义了它们三个中的任何一个，它们三个都应该被定义
+  1. 需要 *自定义析构函数* 的类也需要 *拷贝操作* 和 *赋值操作*
+     #+begin_comment
+     需要自定义析构函数 -> 类中有指针类型的成员（否则导致 浅拷贝问题）
+     #+end_comment
+  2. 类有const或引用成员，需要自定义[[id:6ac8d18c-f96c-489c-9da6-885f952f5491][拷贝赋值运算符]]
+     #+begin_comment
+     const或引用成员只在初始化时被赋值一次，之后不能更改
+     #+end_comment
+
+- 五法则 :: （cpp11）新增 [[id:51145ff8-f7e2-462d-96ec-01cb9e35c2cc][移动构造函数]]、移动赋值运算符。定义了它们五个中的任何一个，它们五个都应该被定义
+
 
 
 * Footnotes
 
 [fn:1]
+#+name: 用一个成员变量 初始化 另一个成员变量
 #+begin_src cpp :results output :namespaces std :includes <iostream>
-class Date
-{
-    // class members are private by default, can only be accessed by other members
-    int m_year {};     // private by default
-    int m_month {};    // private by default
-    int m_day {};      // private by default
-
-    void print() const // private by default
-    {
-        // private members can be accessed in member functions
-        std::cout << m_year << '/' << m_month << '/' << m_day;
-    }
+struct Bad {
+    int m_bad1 { m_data }; // FIXME 未定义行为: m_bad1 在 m_data 之前初始化
+    int m_bad2 { fcn() };  // FIXME 未定义行为: m_bad2 在 m_data 之前初始化（通过 fcn()）
+    int m_data { 5 };
+    int fcn() { return m_data; }
 };
-
-int main()
-{
-    Date today { 2020, 10, 14 }; // 编译错误：不能使用聚合初始化，将 成员变量 改为 public 后可以使用
-    return 0;
-}
 #+end_src
-
-#+RESULTS:
 
 [fn:2]
 #+begin_src cpp :results output :namespaces std :includes <iostream>
-#include <iostream>
-
-class Foo
-{
-public:
-
-    // 默认构造函数
-    Foo()
-    {
-        std::cout << "Foo()\n";
-    }
-
-    // 普通构造函数
-    Foo(int x)
-    {
-        std::cout << "Foo(int) " << x << '\n';
-    }
-
-    // 拷贝构造函数
-    Foo(const Foo&)
-    {
-        std::cout << "Foo(const Foo&)\n";
-    }
-};
-
-int main()
-{
-    // 调用 默认构造：Foo()
-    Foo f1;           // 默认初始化
-    Foo f2{};         // 值初始化 (preferred)
-
-    // 调用 普通构造：Foo(int)
-    Foo f3 = 3;       // 拷贝初始化 (non-explicit constructors only)
-    Foo f4(4);        // 直接初始化
-    Foo f5{ 5 };      // 直接列表初始化 (preferred)
-    Foo f6 = { 6 };   // 拷贝列表初始化 (non-explicit constructors only)
-
-    // 调用 拷贝构造函数：Foo(const Foo&)
-    Foo f7 = f3;      // 拷贝初始化
-    Foo f8(f3);       // 直接初始化
-    Foo f9{ f3 };     // 直接列表初始化 (preferred)
-    Foo f10 = { f3 }; // 拷贝列表初始化
-
-    return 0;
-}
-#+end_src
-
-
-[fn:5]
-#+begin_src cpp :results output :namespaces std :includes <iostream>
-struct Something
-{
-    void print()
-    {
+struct Something {
+    void print() {
         std::cout << "non-const\n";
     }
 
-    void print() const
-    {
+    void print() const {
         std::cout << "const\n";
     }
 
-    void print(int i)
-    {
+    void print(int i) {
       cout << "int\n";
     }
 
@@ -183,28 +175,24 @@ struct Something
     //    ++member;
     // }
 
-    void print2() const
-    {
+    void print2() const {
       cout << "非const对象调用const成员函数\n";
     }
 
     int member {};
 };
 
-int main()
-{
+int main() {
     Something s1{};
     s1.print();  // const成员函数 重载：calls print()
-    s1.print(1); // 非const对象调用 非const成员函数
-    s1.print2(); // 非const对象调用   const成员函数
+    s1.print(1); // 非const对象 调用 非const成员函数
+    s1.print2(); // 非const对象 调用   const成员函数
 
     const Something s2{};
     s2.print(); // const成员函数 重载：calls print() const
 
     // s2.print(1); FIXME const对象 不能调用 非const成员函数
     // s2.mod();    FIXME const对象 不能修改 成员变量
-
-    return 0;
 }
 #+end_src
 
@@ -214,142 +202,202 @@ int main()
 : 非const对象调用const成员函数
 : const
 
-[fn:6]
+[fn:3]
+#+name: static
 #+begin_src cpp :results output :namespaces std :includes <iostream>
-struct Date
-{
-    int year {};
-    int month {};
-    int day {};
-
-    void print() // non-const
-    {
-        std::cout << year << '/' << month << '/' << day;
-    }
+class A {
+  static int a; // 全局数据区，不占类大小
+  int c;        // 4字节
+  int i;        // 4字节
 };
 
-void doSomething(const Date& date) // 此时传入的 非const对象 date的类型 从 Date 变为 const Date
-{
-    date.print(); // const对象 调用 非const成员函数 -> 编译错误 -> 解决：将 print 声明为 const成员函数
-}
-
-int main()
-{
-    Date today { 2020, 10, 14 }; // 非const对象
-    today.print();
-
-    doSomething(today);
-
-    return 0;
-}
-#+end_src
-
-[fn:7]
-#+begin_src cpp :results output :namespaces std :includes <iostream>
-struct Pair // Pair 是聚合体
-{
-    int m_x {};
-    int m_y {};
-
-    constexpr int greater() const
-    {
-        return (m_x > m_y  ? m_x : m_y);
-    }
-};
-
-int main()
-{
-    constexpr Pair p { 5, 6 };        // constexpr对象
-    std::cout << p.greater() << '\n'; // p.greater() 编译时 或 运行时 计算
-
-    constexpr int g { p.greater() };  // p.greater() 必须在 编译时 计算
-    std::cout << g << '\n';
-
-    return 0;
+int main() {
+  cout << sizeof(A) << '\n';
 }
 #+end_src
 
 #+RESULTS:
-: 6
-: 6
+: 8
+
+[fn:4]
+#+name: 虚函数
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+class A
+{
+  // VirtualTable* __vptr;           // 8字节（虚函数表指针）
+  int x;                             // 4字节 -> 4 + 4
+  virtual void f() {}
+};
+
+int main() {
+  cout << sizeof(A) << '\n';
+}
+#+end_src
+
+#+RESULTS: 虚函数
+: 16
+
+[fn:5]
+#+name: 虚继承
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+class Base
+{
+  double a;          // 8字节
+};
+
+class Derived : virtual public Base // g++ 为24；MSVC 为36
+{
+  // vbptr           // 8字节（虚基类指针）
+  int b;             // 4字节 -> 4 + 4
+  // double a;       // 8字节（继承来的成员变量）
+  // NOTE 通过虚基类指针找到对应的虚基类表，虚基类表中存储了偏移量，通过偏移量找到最基类的成员变量
+  // NOTE 示例：A，BC虚继承A，D直接继承BC
+  // B、C、D都有各自的 虚基类指针、虚基类表；创建D对象时，由D负责直接初始化A，访问A中成员变量时，D -> 虚基类指针 -> 虚基类表 -> 偏移量 -> 访问成功
+
+  // class base      // 8字节（MSVC的特殊机制：父类内存大小的缓存空间）
+};
+
+int main() {
+  cout << sizeof(Derived) << '\n';
+}
+#+end_src
+
+#+RESULTS: 虚继承
+: 24
+
+[fn:6]
+#+name: 内存对齐
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+struct A          // A总大小填充为 8的倍数 -> 16
+{
+    short a {};   // 2字节 -> 2 + 2
+    int b {};     // 4字节
+    double c {};  // 8字节
+};
+
+class B           // B总大小填充为 8的倍数 -> 24
+{
+  char a;         // 1字节 -> 1 + 7
+  double b;       // 8字节
+  int c;          // 4字节 -> 4 + 4
+};
+
+class C           // C总大小填充为 8的倍数 -> 16
+{
+  double b;       // 8字节
+  char a;         // 1字节 -> 1 + 3
+  int c;          // 4字节 ->
+};
+#+end_src
+
+[fn:7]
+#+name: 空类大小
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+class Empty {}; // 1字节：用于区分空类对象（cpp标准要求每个对象独立唯一的内存地址；若空类大小为0字节，多个空类实例就无法拥有不同地址）
+
+int main() {
+  cout << sizeof(Empty) << '\n';
+}
+#+end_src
+
+#+RESULTS: 空类大小
+: 1
 
 [fn:8]
 #+begin_src cpp :results output :namespaces std :includes <iostream>
-class Pair // Pair is no longer an aggregate
-{
+class Accumulator {
 private:
-    int m_x {};
-    int m_y {};
+    int m_value { 0 };
 
 public:
-    // 修改为 constexpr Pair(int x, int y): m_x { x }, m_y { y } {} -> ok
-    Pair(int x, int y): m_x { x }, m_y { y } {}
+    void add(int value) { m_value += value; }
 
-    constexpr int greater() const
-    {
-        return (m_x > m_y  ? m_x : m_y);
-    }
+    // 友元声明：全局函数 print() 是 Accumulator的友元
+    friend void print(const Accumulator& accumulator);
 };
 
-int main()
-{
-    constexpr Pair p { 5, 6 };       // FIXME p is not a literal type
-    std::cout << p.greater() << '\n';
+// NOTE 类外定义 非成员友元函数
+void print(const Accumulator& accumulator) {
+    // print() 是 Accumulator的友元，可访问 其 private、protected 成员
+    std::cout << accumulator.m_value;
+}
 
-    constexpr int g { p.greater() };
-    std::cout << g << '\n';
-
-    return 0;
+int main() {
+    Accumulator acc{};
+    acc.add(5);
+    print(acc);
 }
 #+end_src
 
 [fn:9]
 #+begin_src cpp :results output :namespaces std :includes <iostream>
-class IntPair
-{
+class Accumulator {
 private:
-    int m_x{};
-    int m_y{};
-
+    int m_value { 0 };
 public:
-    IntPair(int x, int y)
-        : m_x { x }, m_y { y }
-    {}
+    void add(int value) { m_value += value; }
 
-    int x() const { return m_x; }
-    int y() const { return m_y; }
+    // NOTE 定义在类内的 友元函数 是非成员函数！
+    friend void print(const Accumulator& accumulator) {
+        // Because print() is a friend of Accumulator
+        // it can access the private members of Accumulator
+        std::cout << accumulator.m_value;
+    }
 };
 
-void print(IntPair p)
-{
-    std::cout << "(" << p.x() << ", " << p.y() << ")\n";
-}
-
-// Case 1: Create named variable and return
-IntPair ret1()
-{
-    IntPair p { 3, 4 };
-    return p; // returns temporary object (initialized using p)
-}
-
-// Case 2: Create temporary IntPair and return
-IntPair ret2()
-{
-    return IntPair { 5, 6 }; // returns temporary object (initialized using another temporary object)
-}
-
-// Case 3: implicitly convert { 7, 8 } to IntPair and return
-IntPair ret3()
-{
-    return { 7, 8 }; // returns temporary object (initialized using another temporary object)
-}
-
-int main()
-{
-    print(ret1());
-    print(ret2());
-    print(ret3());
-
-    return 0;
+int main() {
+    Accumulator acc{};
+    acc.add(5);
+    print(acc); // NOTE 是非成员函数，因此这样使用，而不是 acc.print 的形式
 }
 #+end_src
+
+#+RESULTS:
+: 5
+
+[fn:10]
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+class Storage {
+private:
+    int m_nValue {};
+    double m_dValue {};
+public:
+    Storage(int nValue, double dValue) : m_nValue { nValue }, m_dValue { dValue } { }
+    // NOTE 声明 Display类 是 Storage类的朋友
+    friend class Display;
+};
+
+class Display {
+private:
+    bool m_displayIntFirst {};
+
+public:
+    Display(bool displayIntFirst) : m_displayIntFirst { displayIntFirst } { }
+
+    // Display 是 Storage 的朋友, Display成员 可以访问 Storage 的 private成员
+    void displayStorage(const Storage& storage) {
+        if (m_displayIntFirst)
+            std::cout << storage.m_nValue << ' ' << storage.m_dValue << '\n';
+        else
+            std::cout << storage.m_dValue << ' ' << storage.m_nValue << '\n';
+    }
+
+    void setDisplayIntFirst(bool b) {
+         m_displayIntFirst = b;
+    }
+};
+
+int main() {
+    Storage storage { 5, 6.7 };
+    Display display { false };
+
+    display.displayStorage(storage);
+
+    display.setDisplayIntFirst(true);
+    display.displayStorage(storage);
+}
+#+end_src
+
+#+RESULTS:
+: 6.7 5
+: 5 6.7

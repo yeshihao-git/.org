@@ -4,13 +4,16 @@
 #+title: mysql一行记录是怎么存储的？
 #+filetags: mysql
 
-* mysql的InnoDB是如何存储数据的？ [[https://xiaolincoding.com/mysql/base/row_format.html#mysql-%E7%9A%84%E6%95%B0%E6%8D%AE%E5%AD%98%E6%94%BE%E5%9C%A8%E5%93%AA%E4%B8%AA%E6%96%87%E4%BB%B6][小林coding]]
+* mysql的InnoDB是如何存储数据的？
 mysql数据存储在 =/var/lib/mysql= ，当我们创建一个数据库，并在数据库中创建一个表后，会出现以下文件：
 1. =.opt= ：当前数据库 默认字符集、字符校验规则
 2. =.frm= ：存储 表结构
 3. =.ibd= ：存储 表数据
 
 mysql 默认使用 InnoDB存储引擎，InnoDB 存储数据原理，见：[[id:3667ef60-40f5-40a2-95c1-95a41156b22c][图:表空间文件结构]]
+
+[[[https://xiaolincoding.com/mysql/base/row_format.html#mysql-%E7%9A%84%E6%95%B0%E6%8D%AE%E5%AD%98%E6%94%BE%E5%9C%A8%E5%93%AA%E4%B8%AA%E6%96%87%E4%BB%B6][小林coding]]]
+
 
 ** 图:表空间文件结构 :ATTACH:
 :PROPERTIES:
@@ -24,7 +27,7 @@ mysql 默认使用 InnoDB存储引擎，InnoDB 存储数据原理，见：[[id:3
 5. *行*     存放真实记录，聚簇索引的情况下对应B+树中叶子节点中的数据
 
 
-* InnoDB 行格式（主要介绍 COMPACT）[[https://xiaolincoding.com/mysql/base/row_format.html#compact-%E8%A1%8C%E6%A0%BC%E5%BC%8F%E9%95%BF%E4%BB%80%E4%B9%88%E6%A0%B7][小林coding]]
+* InnoDB 行格式（主要介绍 COMPACT）
 InnoDB 中 =COMPACT行格式= 主要分为：额外信息部分、真实数据部分
 
 *额外信息部分* ：包含 变长字段长度列表、NULL值列表、记录头信息
@@ -45,6 +48,9 @@ InnoDB 中 =COMPACT行格式= 主要分为：额外信息部分、真实数据�
 - 列值            :: 正序存储所有列数据，若行过大，在数据部分会记录部分数据和一个指向溢出页的地址，溢出页中记录溢出的数据
 
 Dynamic行格式 则是在真实数据处存放20字节地址指向溢出页，溢出页中存放数据
+
+[[[https://xiaolincoding.com/mysql/base/row_format.html#compact-%E8%A1%8C%E6%A0%BC%E5%BC%8F%E9%95%BF%E4%BB%80%E4%B9%88%E6%A0%B7][小林coding]]]
+
 
 ** 图:COMPACT行格式 :ATTACH:
 :PROPERTIES:

@@ -4,43 +4,42 @@
 #+title: mysql日志
 #+filetags: mysql
 
-* mysql日志 [[https://xiaolincoding.com/mysql/log/how_update.html#mysql-%E6%97%A5%E5%BF%97-undo-log%E3%80%81redo-log%E3%80%81binlog-%E6%9C%89%E4%BB%80%E4%B9%88%E7%94%A8][小林coding]]
-*undo log（回滚日志）* ：见：[[id:cd6c827d-fd0a-4184-9e07-dfd646463fd2][图:undo log、redo log]]
-1. InnoDB存储引擎层生成的日志，记录数据被事务「修改前」的状态，用于事务回滚、MVCC；实现事务的 *原子性 A*
-2. 简单说：事务改数据前先写undo log，出错就用它恢复，还能用它查看历史版本数据
-   - 事务回滚 ：出错 或 用户使用 ROLLBACK 语句
-   - MVCC 实现：Read View + undo log
+* mysql日志
+- undo log（回滚日志） :: InnoDB存储引擎层生成的日志，记录数据被事务「修改前」的状态，用于事务回滚、MVCC；实现事务的 *原子性 A* 。见：[[id:cd6c827d-fd0a-4184-9e07-dfd646463fd2][图:undo log、redo log]]
+  1. 简单说：事务改数据前先写undo log，出错就用它恢复，还能用它查看历史版本数据
+     - 事务回滚 ：出错 或 用户使用 ROLLBACK 语句
+     - MVCC 实现：Read View + undo log
 
-*redo log（重做日志）* ：见：[[id:cd6c827d-fd0a-4184-9e07-dfd646463fd2][图:undo log、redo log]]
-1. InnoDB存储引擎层生成的日志，记录数据被事务「修改后」的状态，用于故障恢复（eg：掉电）；实现事务的 *持久性 D*
-2. 简单说：先写redo log到内存缓冲区，再刷到磁盘，这个过程是同步的；后续再异步的将数据刷到磁盘
+- redo log（重做日志） :: InnoDB存储引擎层生成的日志，记录数据被事务「修改后」的状态，用于故障恢复（eg：掉电）；实现事务的 *持久性 D* 。见：[[id:cd6c827d-fd0a-4184-9e07-dfd646463fd2][图:undo log、redo log]]
+  1. 简单说：先写redo log到内存缓冲区，再刷到磁盘，这个过程是同步的；后续再异步的将数据刷到磁盘
 
-*bin log （归档日志）*  ：
-1. server层生成的日志，记录 *表结构、表数据 操作的日志* ，用于 数据备份、主从复制
-   - 数据备份 ::
-     备份：全量备份（mysqldump等）+ bin log 记录的增量操作
-     恢复：先从全量备份恢复，然后执行bin log中的增量操作
-   - [[id:33836d68-a265-4307-b28f-0c610432b47f][主从复制]] ::
-     1. 主库将数据变更写入bin log
-     2. 从库IO线程请求主库bin log并存到relay log
-     3. 从库SQL线程回放relay log，同步主库数据
+- bin log （归档日志） :: server层生成的日志，记录 *表结构、表数据 操作的日志* ，用于 数据备份、主从复制
+  1. *数据备份*
+     - 备份：全量备份（mysqldump等）+ bin log 记录的增量操作
+     - 恢复：先从全量备份恢复，然后执行bin log中的增量操作
+  2. *[[id:33836d68-a265-4307-b28f-0c610432b47f][主从复制]]*
+     1) 主库将数据变更写入bin log
+     2) 从库IO线程请求主库bin log并存到relay log
+     3) 从库SQL线程回放relay log，同步主库数据
      主从复制完成后：写主库，读从库
 
-*relay log（中继日志）* ：
-1. 缓存从主库同步来的bin log内容，解耦从库的IO线程和SQL线程（IO线程用于拉取bin log，SQL线程用于执行回放数据操作）；避免回放速度慢阻塞bin log拉取
+- relay log（中继日志） :: 缓存从主库同步来的bin log内容，解耦从库的IO线程和SQL线程（IO线程用于拉取bin log，SQL线程用于执行回放数据操作）；避免回放速度慢阻塞bin log拉取
 
-*慢查询日志* ：
-1. server层生成的日志，记录执行时间过长的SQL，需要设置慢查询阈值后手动开启，用于SQL优化
-2. *SQL优化* ：
-   1) 通过慢查询日志找到低效SQL
-   2) EXPALIN分析执行计划（看是否走索引、走的什么索引）
-   3) 没走索引看是不是[[id:e3fe9403-ff44-4eb7-a10e-67e4db973455][索引失效]]、如果是回表操作导致效率低考虑多列索引
+- 慢查询日志 :: server层生成的日志，记录执行时间过长的SQL，需要设置慢查询阈值后手动开启，用于SQL优化
+  1. *SQL优化* ：
+     1) 通过慢查询日志找到低效SQL
+     2) EXPALIN分析执行计划（看是否走索引、走的什么索引）
+     3) 没走索引看是不是[[id:e3fe9403-ff44-4eb7-a10e-67e4db973455][索引失效]]、如果是回表操作导致效率低考虑多列索引
+
+📎：[[[https://xiaolincoding.com/mysql/log/how_update.html#mysql-%E6%97%A5%E5%BF%97-undo-log%E3%80%81redo-log%E3%80%81binlog-%E6%9C%89%E4%BB%80%E4%B9%88%E7%94%A8][小林coding]]]
+
 
 ** 图:undo log、redo log :ATTACH:
 :PROPERTIES:
 :ID:       cd6c827d-fd0a-4184-9e07-dfd646463fd2
 :END:
 [[attachment:_20250830_115600screenshot.png]]
+
 
 ** 图:主从复制原理 :ATTACH:
 :PROPERTIES:

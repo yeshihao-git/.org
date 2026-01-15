@@ -2,8 +2,13 @@
 :ID:       dba4c85d-5a01-44d7-be35-717d76ac8ea3
 :END:
 #+title: org-refile
-#+filetags: org
+#+filetags: org-mode
 
 * org-refile
-1. 用于将笔记从一个buffer移动到另一个buffer
-2. 设置 org-refile 的目标文件以及headline，见 [[id:b60cad9d-053c-4def-b2d0-88f1ea8dd963][org-refile设置目标文件和层级]]
+- org-refile :: org 中用于将 entry 从一个 org文件 移动到另一个
+
+** org-refile设置目标文件和层级
+:PROPERTIES:
+:ID:       59b1db13-78ab-426a-a055-339ba5f86220
+:END:
+1. =M-x customize= -> org-refile-targets

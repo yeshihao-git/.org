@@ -1,41 +1,25 @@
 :PROPERTIES:
 :ID:       b7f51b4e-3a4b-4b4f-ab59-c57bb2b81a9b
 :END:
-#+title: apk
+#+title: alpine linux
+#+filetags: linux
 
-* 使用
-** 配置镜像源
-1. vi /etc/apk/repositories
-2. 修改以下内容
-   #+begin_example
-   https://dl-cdn.alpinelinux.org/alpine/v3.14/main
-   https://dl-cdn.alpinelinux.org/alpine/v3.14/community
-   <====1====>
-   https://mirrors.aliyun.com/alpine/v3.14/main
-   https://mirrors.aliyun.com/alpine/v3.14/community
-   <====2====>
-   https://mirror.tuna.tsinghua.edu.cn/alpine/v3.14/main
-   https://mirror.tuna.tsinghua.edu.cn/alpine/v3.14/community
-   #+end_example
-3. 更新包索引：apk update
+* alpine linux
+轻量级linux发行版，以小巧（约5MB）和高效著称，包管理器为 *apk* ；广泛用于 *docker基础镜像*
 
-
-* 查询
-| 命令 |      |                | 作用                   |
-|------+------+----------------+------------------------|
-| apk  | 安装 | add            | 安装软件包             |
-|      |      | add --no-cache | 安装时不缓存包索引     |
-|------+------+----------------+------------------------|
-|      | 更新 | update         | 更新软件包索引         |
-|      |      | upgrade        | 升级所有已安装的软件包 |
-|------+------+----------------+------------------------|
-|      | 查询 | info           | 查看软件包的信息       |
-** 配置
-| 路径                  | 作用           |
-|-----------------------+----------------|
-| /etc/apk/repositories | 配置镜像源     |
-| /var/cache/apk/*      | 软件包缓存目录 |
-
-* 概念
-
-- 简介 :: [[id:8a58da08-5d12-4ee2-8f18-4064148d04cb][alpine]] linux的包管理器
+** apk设置镜像源
+:PROPERTIES:
+:ID:       207715d6-b8ba-424d-b389-da37348a21af
+:END:
+#+begin_example bash
+vi /etc/apk/repositories  # 编辑镜像源文件。软件包缓存目录：/var/cache/apk/*
+#---------------------------------------------------------#
+# 阿里云镜像源
+https://mirrors.aliyun.com/alpine/v3.14/main
+https://mirrors.aliyun.com/alpine/v3.14/community
+# 清华镜像源
+https://mirror.tuna.tsinghua.edu.cn/alpine/v3.14/main
+https://mirror.tuna.tsinghua.edu.cn/alpine/v3.14/community
+#---------------------------------------------------------#
+apk update                # 更新包索引
+#+end_example

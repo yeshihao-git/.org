@@ -4,14 +4,15 @@
 #+title: IP
 #+filetags: network
 
-* IP(图) :ATTACH:
+* IP（图文） :ATTACH:
 :PROPERTIES:
 :ID:       b63bff4b-6f9d-4be6-af31-a0fb1f313826
 :END:
+- IP :: 用于 *定位网络中的主机* ，以实现主机间通信
 [[attachment:_20250806_153729screenshot.png]][[attachment:_20250806_153729screenshot.png]]
-用于 *定位网络中的主机* ，以实现主机间通信
 
-** 图:IP和MAC的区别 :ATTACH:
+
+** IP和MAC的区别（图文） :ATTACH:
 :PROPERTIES:
 :ID:       b48565bf-ffab-4621-84b3-adec1d415f5f
 :END:
@@ -36,13 +37,25 @@ B类网络 ：172.16.0.0，前16位为网络号
 子网掩码：255.255.192.0，这里划分出的网络号为18，因此后面的2位为子网号
 #+end_example
 
-
 *无分类地址CIDR* ：
 # 解决传统ABC类地址数量不够的问题
 =a.b.c.d/x= 前x位为网络号，剩下的为主机号
 *划分子网方式* ：天生具备
 
-** 图:传统ABC类地址 :ATTACH:
+
+** 子网
+:PROPERTIES:
+:ID:       3336b140-a5c6-455f-bf02-87ef142819a2
+:END:
+- 子网 :: 是局域网的内部划分
+#+begin_example
+某公司局域网 的 IP池 为 192.168.0.0/16
+子网A：192.168.1.0/24
+子网B：192.168.2.0/24
+#+end_example
+
+
+** 🖼 传统ABC类地址 :ATTACH:
 :PROPERTIES:
 :ID:       41ae076d-a9f3-4808-affe-92e69891c837
 :END:
@@ -50,7 +63,7 @@ B类网络 ：172.16.0.0，前16位为网络号
 
 
 * 路由控制
-用于 *不同网络间主机通信* ，具体做法：[[id:e1612707-2c52-4b83-b0d7-25fb5361b12a][路由表]]
+- 路由控制 :: 用于 *不同网络间主机通信* ，具体做法：路由表
 
 
 * IP分片与重组

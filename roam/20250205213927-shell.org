@@ -2,46 +2,70 @@
 :ID:       1ff40557-56dc-4670-b38f-59586d545315
 :END:
 #+title: shell
-#+filetags: index
+#+filetags: os
 
 * shell
-1. 是用户和操作系统内核交互的 *命令行解释器*
-2. shell的实现：sh bash zsh
+- shell :: 用户 和 操作系统内核 之间交互的接口（命令行解释器）。shell的实现：sh bash zsh
 
 
-* 登录Shell和非登录Shell
-- 登录Shell   :: 需要登录初始化流程（通常需要输入帐号密码）
-  #+name: 登录bash Shell，顺序加载
-  #+begin_example bash
-  /etc/profile                              （系统级）
-  ~/.bash_profile、~/.bash_login、~/.profile（用户级，按顺序只加载第一个存在的文件）
-  # .bash_profile 中的内容一般为加载 .bashrc
-  #+end_example
-
-- 非登录Shell :: 用户在登录后，新开的Shell，用于日常命令
-  #+name: 非登录bash Shell，只加载
-  #+begin_example bash
-  /etc/bashrc（系统级）
-  ~/.bashrc  （用户级）
-  #+end_example
-
-** 区分方式
-1. =echo $0= 若输出 bash 或 zsh 则为 非登录Shell，否则为 登录Shell
-2. bash特有： =shopt login_shell= 若为 off 就是 非登录Shell
-
-
-* bash
+** 区分登录shell和非登录shell
 :PROPERTIES:
-:ID:       a9d4e699-059e-4911-869c-2b25e1b2568d
+:ID:       a38b7c87-bce0-49d6-889f-25b6d86de735
 :END:
-| 命令 | 参数 | 作用                                                      |
-|------+------+-----------------------------------------------------------|
-| bash |      | 交互式启动子[[id:1ff40557-56dc-4670-b38f-59586d545315][Shell]]，进入 Shell 中，需手动退出，加载[[id:d3077f97-a2b2-4e13-aa26-9a8686e6cd96][.bashrc]] |
-|      | -c   | 非交互式启动子[[id:1ff40557-56dc-4670-b38f-59586d545315][Shell]]，执行命令后退出，不加载[[id:d3077f97-a2b2-4e13-aa26-9a8686e6cd96][.bashrc]]        |
-
-若~中没有 =.bashrc= 、 =.bash_profile= 之类的文件
-可以从 =/etc/skel= 中复制
 #+begin_example bash
-# 从系统默认模板复制一份
-cp /etc/skel/.bashrc ~/
+echo $0             # 若输出 bash 或 zsh 为 非登录shell，否则为 登录shell
+shopt login_shell   # （bash特有）为 off 为  非登录shell
 #+end_example
+
+- 登录shell :: 用户通过认证后启动的shell（通常需要输入帐号密码）。按顺序自动加载以下 *登录配置文件* ：
+#+begin_example bash
+/etc/profile                                 # 系统级
+~/.bash_profile、 ~/.bash_login、 ~/.profile # 用户级，顺序加载（.bash_profile 中一般加载 .bashrc）
+#+end_example
+
+- 非登录shell :: 无需认证启动的shell，用于日常命令（eg：用户登录后，新开shell）。按顺序自动加载以下 *非登录配置文件* ：
+#+begin_example bash
+/etc/bashrc    # 系统级
+~/.bashrc      # 用户级
+#+end_example
+
+
+** bash error：没有.bashrc、.bash_profile文件
+:PROPERTIES:
+:ID:       eefdf23f-baf4-412c-a3cb-f1fadac267bd
+:END:
+#+begin_example bash
+cp /etc/skel/.bashrc ~/      # 从系统默认模板复制一份
+#+end_example
+
+
+** zsh安装、配置oh my zsh
+:PROPERTIES:
+:ID:       c15cc693-42fb-4063-a566-55bfa54436d0
+:END:
+#+begin_example bash
+#1. 安装 zsh
+chsh -s /path/to/zsh                               #2. 设置默认终端为 zsh
+sh -c "$(curl -fsSL https://install.ohmyz.sh/)"    #3. 安装 oh my zsh
+vim .zshrc                                         #4. 配置主题
+#-----------.zshrc文件----------------#
+# 主题目录：~/.oh-my-zsh/themes
+ZSH_THEME="主题"
+#-------------------------------------#
+                                                   #5. 插件安装，见下表。插件目录：~/.oh-my-zsh/custom/plugins
+vim .zshrc                                         #6. 启用插件
+#-----------.zshrc文件----------------#
+plugins=(git zsh-autosuggestions zsh-syntax-highlighting z extract web-search)
+#-------------------------------------#
+#+end_example
+|-------------------------+-----------------------------+--------------------------------------------------------------------|
+| 插件                    | 作用                        | 安装方式                                                           |
+|-------------------------+-----------------------------+--------------------------------------------------------------------|
+| zsh-autosuggestions     | 命令提示插件                | git clone https://github.com/zsh-users/zsh-autosuggestions         |
+| zsh-syntax-highlighting | 命令语法校验                | git clone https://github.com/zsh-users/zsh-syntax-highlighting.git |
+| z                       | 快捷跳转历史文件夹          | 内置                                                               |
+| extract                 | 用 x 解压任何文件           | 内置                                                               |
+| web-search              | 终端搜索：google <搜索内容> | 内置                                                               |
+|-------------------------+-----------------------------+--------------------------------------------------------------------|
+
+📎 [[https://www.haoyep.com/posts/zsh-config-oh-my-zsh/][参考]]

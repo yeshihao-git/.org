@@ -1,8 +1,0 @@
-:PROPERTIES:
-:ID:       5c64ecb1-a49c-4a4e-972e-5438c0c278eb
-:END:
-#+title: find
-
-
-* 使用
-find <路径> -name "<名称>"

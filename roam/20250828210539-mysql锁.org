@@ -4,7 +4,7 @@
 #+title: mysql锁
 #+filetags: mysql
 
-* mysql锁 [[https://xiaolincoding.com/mysql/lock/mysql_lock.html#%E5%85%A8%E5%B1%80%E9%94%81][小林coding]]
+* mysql锁
 *实践方式*
 - 悲观锁 ::
   1. 默认冲突，操作前加锁；适用 写多读少 场景（eg：商品秒杀）
@@ -24,6 +24,9 @@
 - 表级锁 :: 锁整张表
 - 行级锁 :: 锁单行数据
 
+📎：[[[https://xiaolincoding.com/mysql/lock/mysql_lock.html#%E5%85%A8%E5%B1%80%E9%94%81][小林coding]]]
+
+
 ** 全局锁
 用于 *备份数据库* ，使整个数据库的处于 "只读状态"
 （MyISAM存储引擎，InnoDB存储引擎这种支持「可重复读隔离级别的事务」，推荐用 mysqldump --single-transaction 基于 MVCC 实现 “无锁全量备份”，无需依赖全局锁，避免阻塞业务写操作）
@@ -31,6 +34,7 @@
 flush tables with read lock // 加全局锁
 unlock tables               // 解全局锁
 #+end_example
+
 
 ** 表级锁
 *表锁*
@@ -63,6 +67,7 @@ unlock tables               // 解所有表锁
 表级锁，用于告知其他事务当前表中是否有行级锁；具体来说
 1. 对表中某个记录加读锁（S）时，会自动在表级别加 读意向锁（IS）；此时其他事务只能加表级读锁
 2. 对表中某个记录加写锁（X）时，会自动在表级别加 写意向锁（IX）；此时其他事务不能加表级读锁、写锁
+
 
 ** 行级锁
 # InnoDB引擎支持，MyISAM引擎不支持

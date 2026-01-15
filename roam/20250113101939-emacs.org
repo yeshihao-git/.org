@@ -2,33 +2,152 @@
 :ID:       42689b29-37d3-457a-be3a-be8d83cfaf74
 :END:
 #+title: emacs
-#+filetags: index
+#+filetags: tools
 
 * emacs
-1. emacs 是高度可定制、可扩展的文本编辑器；可以通过 [[id:42cbcb5f-e832-4245-b59b-21c87f4a9a3d][elisp]] 来扩展功能，其中著名的 mode 是 [[id:2d50336c-dabb-4c57-8cb5-b7853cabd245][org]]； 著名的配置框架是 [[id:13d1007d-c805-482c-bf95-5e53ba86bf4c][doom]]
-2. 在 *命令行* 使用
-   | 参数                        | 作用                 |
-   |-----------------------------+----------------------|
-   | --help                      | 查看 CLI 帮助        |
-   | --init-directory <配置路径> | 加载指定配置，启动   |
-   | -nw                         | 终端emacs            |
-   | -q                          | 不加载任何配置，启动 |
-3. *配置文件* 在以下目录中的一个，如果希望 emacs 加载不同的配置，见 [[id:ee695cd6-0eb2-4dd1-bb54-a53a108931f9][emacs加载不同配置启动]]
-   | 函数/路径               | 说明             |
-   |-------------------------+------------------|
-   | ~/.emacs.d              | 符合工程化       |
-   | ~/.emacs                | 单一文件配置     |
-   | ~/.config/emacs/init.el | 仅适用于>=27版本 |
-4. *用户设置* 使用 =customize=
-5. emacs 内置了丰富的 *帮助函数*
-   | 命令               | 作用                            |
-   |--------------------+---------------------------------|
-   | C-h i              | 查看info文档                    |
-   | C-h ?              | 所有帮助                        |
-   |--------------------+---------------------------------|
-   | C-h k              | 快捷键                          |
-   | C-h o              | 符号                            |
-   | C-h v              | 变量                            |
-   | C-h f              | 函数                            |
-   | C-h m              | 模式                            |
-   | C-h b k            | 查看 keymap                     |
+- emacs :: 高度可定制、可扩展的文本编辑器，可以通过 [[id:42cbcb5f-e832-4245-b59b-21c87f4a9a3d][elisp]] 来扩展功能，其中著名的 mode 是 [[id:2d50336c-dabb-4c57-8cb5-b7853cabd245][org-mode]]，著名的配置框架是 [[id:13d1007d-c805-482c-bf95-5e53ba86bf4c][doom emacs]]
+
+** 快速开始
+*** 帮助
+|---------+--------------|
+| 命令    | 作用         |
+|---------+--------------|
+| C-h i   | 查看info文档 |
+| C-h ?   | 所有帮助     |
+|---------+--------------|
+| C-h k   | 快捷键       |
+| C-h o   | 符号         |
+| C-h v   | 变量         |
+| C-h f   | 函数         |
+| C-h m   | 模式         |
+| C-h b k | 查看 keymap  |
+|---------+--------------|
+
+*** 用户设置
+=M-x customize=
+
+*** el、elc、eln文件
+|------+--------------------------+-------------------|
+| 文件 | 说明                     | 生成方式          |
+|------+--------------------------+-------------------|
+| .eln | 机器码，平台相关，速度快 | native-compile    |
+| .elc | 字节码，跨平台，速度中   | byte-compile-file |
+| .el  | 源代码，跨平台，速度慢   |                   |
+|------+--------------------------+-------------------|
+
+** 工具链
+:PROPERTIES:
+:ORDERED:  t
+:END:
+|------+------------------------------+------------------|
+| 类别 | 作用                         | 工具             |
+|------+------------------------------+------------------|
+| 笔记 | 笔记、日程管理               | [[id:2d50336c-dabb-4c57-8cb5-b7853cabd245][org-mode]]         |
+|      | 画图                         | [[id:313e6317-40c1-4556-b5d0-2ab663b67091][artist]]           |
+|------+------------------------------+------------------|
+| 编程 | 智能感知                     | [[id:a144c7b5-3ece-4cac-a7ea-3ad48ca201ff][lsp-mode]]         |
+|      | 项目管理                     | [[id:7aabab73-e582-4b17-99f7-7e4411339dc5][projectile]]       |
+|      | 终端                         | vterm            |
+|      | 调试                         | [[id:2ea92e06-8c1b-4b05-aa40-eded46107b9d][gud]] dape         |
+|      | 工作区                       | persp-mode       |
+|      | git（emacs版）               | magit            |
+|------+------------------------------+------------------|
+| 导航 | 字母、行跳转                 | [[id:f0034544-76e1-4836-b6e2-6871147628a7][avy]]              |
+|      | 搜索导航                     | [[id:fef52c99-9a1f-4e7c-b9c3-55a8f78b4030][consult]]          |
+|      | 书签                         | [[id:ab89d30d-1fac-4d72-92ff-df5dc71ea4a1][bookmark.el]]      |
+|------+------------------------------+------------------|
+| 编辑 | 模板 管理                    | [[id:09861cc7-7387-4795-8a7b-0ced6ac9ea13][yasnippet]]        |
+|      | 多光标编辑                   | [[id:83235f01-d0bc-4ac0-85eb-22e3d787068b][multiple-cursors]] |
+|------+------------------------------+------------------|
+| 窗口 | buffer翻转                   | [[id:282b56b7-ee67-4050-b264-8cf8f644aaa3][transpose-frame]]  |
+|      | 窗口布局 恢复、重做          | [[id:7b43e1fe-7cae-4587-852b-b60c3a7881d0][winner]]           |
+|      | 窗口 切换、管理              | [[id:fab6f115-cd84-45dc-8c86-ebf73a2452aa][ace-window]]       |
+|      | 便签页 管理                  | [[id:9cc67937-2e9f-4d6e-a436-9e3d5b78c72d][tab-bar]]          |
+|      | minibuffer增强，弹出补全窗口 | vertico          |
+|      | minibuffer增强，无序搜索     | orderless        |
+|      | minibuffer增强，显示注释     | marginalia       |
+|------+------------------------------+------------------|
+| 其他 | 鼠标右键                     | embark           |
+|      | 文件管理                     | [[id:e6e64011-45a5-4349-b1ea-7789500acb13][dired]]            |
+|      | 包配置 管理                  | [[id:6c5c1535-794a-43a0-80cf-57657c103dd3][use-package]]      |
+|------+------------------------------+------------------|
+
+** emacs配置
+:PROPERTIES:
+:ID:       db70c475-953a-447b-8b64-998b39bd96d5
+:END:
+*配置文件路径* ：
+|-------------------------+--------------------|
+| 路径                    | 说明               |
+|-------------------------+--------------------|
+| ~/.emacs.d              | 符合工程化的配置   |
+| ~/.emacs                | 单一文件配置       |
+| ~/.config/emacs/init.el | 仅适用于 >=27 版本 |
+|-------------------------+--------------------|
+*配置加载顺序* ：
+1. .emacs.d/early-init.el
+2. site-start.el          系统级配置（对所有用户生效）
+3. .emacs.d/init.el       用户级配置
+4. default.el
+*配置最佳实践* ：
+1. 系统级配置：将配置放到 site-init.el 中（eg：共享插件路径）
+2. 用户级配置：将配置放入 .emacs.d/init.el 中
+3. 模块化管理：将配置拆分到 .el文件 中，在 init.el中load/require 加载
+*** hook
+- hook :: 某个事件发生时（如：打开文件、切换模式） *自动调用的函数列表* （类似回调函数）
+#+begin_src emacs-lisp
+(setq default-major-mode 'text-mode)          ; 当打开一个新文件时，如果它不需要进入其他模式，默认进入文本模式；default-major-mode api似乎已失效
+(add-hook 'text-mode-hook 'turn-on-auto-fill) ; auto-fill-mode：打开自动换行模式，超出屏幕的部分自动换行(doom无效，原生emacs生效)
+#+end_src
+
+*** aliases
+- aliases :: 为函数起别名，允许不同名字调用同一函数，通过 =defalisa= 实现
+#+begin_src emacs-lisp
+(setq mail-aliases t)  ; 使用邮件别名
+#+end_src
+
+*** load、load-path
+- load :: 动态加载 .el 和 .elc文件 的函数
+- load-path :: 存储搜索 .el、.elc 这些文件的目录路径的变量
+#+begin_src emacs-lisp
+; load：加载kfill.el文件，当然如果存在kfill.elc速度会更快
+(load "~/emacs/kfill")
+; load-path
+(setq load-path (cons "~/emacs" load-path))
+#+end_src
+
+*** autoload
+- autoload :: 延迟加载机制，声明函数和文件的映射关系，在函数首次调用时，才会加载对应的代码文件
+#+begin_src emacs-lisp
+(autoload 'html-helper-mode ; 从html-helper-mode.el(或.elc)文件延迟加载html-helper-mode函数。该文件必须在load-path中
+  "html-helper-mode" "Edit HtML documents" t) ; 因为函数还没被加载，我们希望在M-x的时候看到相关信息，因此写入注释
+#+end_src
+
+*** keymap
+- keymap :: (键映射) 快捷键对应函数的键值对列表
+  1. 优先级：模式相关keymap > 全局keymap
+  2. define-key：函数绑定与模式相关的键映射
+#+begin_src emacs-lisp
+(define-key texinfo-mode-map (kbd "C-c C-l") 'texinfo-insert-@group)
+#+end_src
+
+** emacs加载不同配置启动
+:PROPERTIES:
+:ID:       b899c4ad-20d9-4b66-804d-fc7058fd5aeb
+:END:
+#+begin_example bash
+emacs --init-directory ~/.emacs.d.learn   # 加载 ~/.emacs.d.learn 中的配置
+#+end_example
+
+** emacs设置缩进风格
+:PROPERTIES:
+:ID:       535706a8-0914-4e95-b47a-28726f5b57e6
+:ROAM_ALIASES: cpp设置缩进风格
+:END:
+=M-x c-set-style= -> gnu
+
+** vterm复制终端内容
+:PROPERTIES:
+:ID:       cf5aade8-16e5-420e-8307-fa54337213b3
+:END:
+打开 vterm-copy mode： =C-c C-t=

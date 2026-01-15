@@ -1,15 +1,8 @@
 :PROPERTIES:
 :ID:       e815c0a7-1496-4552-8a9f-aad4d4227fed
 :END:
-#+title: redis常见面试题
+#+title: redis面试题
 #+filetags: redis
-
-* redis
-基于内存的数据库，读写速度非常快，常用于：
-1. 缓存
-2. 消息队列
-3. 分布式锁
-
 
 * redis常见5种数据类型
 # redis所有数据结构都存储为字符串：文本、整数、浮点数、二进制数据

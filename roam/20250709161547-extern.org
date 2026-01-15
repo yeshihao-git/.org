@@ -4,26 +4,25 @@
 #+title: extern
 #+filetags: cpp
 
-* extern [[https://www.learncpp.com/cpp-tutorial/external-linkage-and-variable-forward-declarations/][learncpp7.7]]
-根据上下文，有两个含义：
-1. 赋予变量[[id:f6bf51b1-6034-48c5-9fea-81e561eef430][外部链接]]属性
-2. [[id:98b78b88-32ba-4ad7-b5d5-efeae3da8405][前向声明]]某个变量在其他地方定义过
-#+name: main.cpp
-#+begin_src cpp :results output :namespaces std :includes <iostream>
-extern int g_x;       // this extern is a forward declaration of a variable named g_x that is defined somewhere else
-extern const int g_y; // this extern is a forward declaration of a const variable named g_y that is defined somewhere else
+* extern
+- extern :: [[id:1752c1cb-3fd8-4272-96c9-fa73e14a7d3c][声明]] 变量/函数 存在外部定义，extern修饰的 全局变量 具有[[id:eeb84412-f94b-4f43-b67a-d1063fb7e106][外部链接性]] [fn:1]
 
-int main()
-{
-    std::cout << g_x << ' ' << g_y << '\n'; // prints 2 3
 
-    return 0;
-}
-#+end_src
+* Footnotes
 
+[fn:1]
 #+name: a.cpp
 #+begin_src cpp :results output :namespaces std :includes <iostream>
-// global variable definitions
-int g_x { 2 };              // non-constant globals have external linkage by default
-extern const int g_y { 3 }; // this extern gives g_y external linkage
+int g_x { 2 };              // 非const全局变量 默认具有 外部链接性
+extern const int g_y { 3 }; // extern 给予 g_y 外部链接性
+#+end_src
+
+#+name: main.cpp
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+extern int g_x;       // extern 前向声明 变量 g_x 定义在其他地方
+extern const int g_y; // extern 前向声明 const变量 g_y 定义在其他地方
+
+int main() {
+    std::cout << g_x << ' ' << g_y << '\n'; // prints 2 3
+}
 #+end_src

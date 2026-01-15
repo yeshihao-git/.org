@@ -19,6 +19,7 @@ while (--n)                     // 执行 n-1 次
 [[https://leetcode.cn/problems/remove-nth-node-from-end-of-list/description/][leetcode 19.删除链表的倒数第N个节点]]
 [[https://leetcode.cn/problems/reverse-linked-list-ii/description/][leetcode 92.反转链表II]]
 [[https://leetcode.cn/problems/reverse-nodes-in-k-group/description/][leetcode 25.K个一组翻转链表]]
+
 ** 判断四象限
 #+begin_src cpp :results output :namespaces std :includes <iostream>
 // 涵盖以下3种情况
@@ -32,6 +33,7 @@ if (p == nullptr || q == nullptr) {
 // 4. p不空 q不空
 #+end_src
 [[https://leetcode.cn/problems/symmetric-tree/description/][leetcode 101.对称二叉树]]
+
 
 ** 快速排序
 #+begin_src cpp :results output :namespaces std :includes <iostream>
@@ -49,6 +51,7 @@ void quick_sort(int q[], int l, int r) {
 [[https://leetcode.cn/problems/sort-an-array/description/][leetcode 912.排序数组]]
 [[https://leetcode.cn/problems/kth-largest-element-in-an-array/description/][leetcode 215.数组中的第K个最大元素]]
 https://www.nowcoder.com/practice/e016ad9b7f0b45048c58a9f27ba618bf?tpId=295&tqId=44581&sourceUrl=%2Fexam%2Foj%3FquestionJobId%3D10%26subTabName%3Donline_coding_page
+
 
 ** 归并排序
 1. 找中间节点
@@ -73,6 +76,7 @@ void merge_sort(int q[], int l, int r) {
 #+end_src
 https://www.acwing.com/problem/content/789/
 
+
 ** 二分查找
 #+name: 闭区间写法
 #+begin_src cpp :results output :namespaces std :includes <iostream>
@@ -89,6 +93,7 @@ while (l <= r) {
 [[https://leetcode.cn/problems/search-in-rotated-sorted-array/description/][leetcode 33.搜索旋转排序数组]]
 [[https://leetcode.cn/problems/find-first-and-last-position-of-element-in-sorted-array/description/][leetcode 34.在排序数组中查找元素的第一个和最后一个位置]]
 
+
 ** 定长滑动窗口
 #+begin_src cpp :results output :namespaces std :includes <iostream>
 for (int l = 0, r = 0; r < n; ++r) {
@@ -100,6 +105,7 @@ for (int l = 0, r = 0; r < n; ++r) {
 https://leetcode.cn/problems/maximum-number-of-vowels-in-a-substring-of-given-length/description/
 https://leetcode.cn/problems/find-all-anagrams-in-a-string/description/?envType=study-plan-v2&envId=top-100-liked
 
+
 ** 不定长滑动窗口
 #+begin_src cpp :results output :namespaces std :includes <iostream>
 for (int l = 0, r = 0; r < n; ++r) {
@@ -109,6 +115,7 @@ for (int l = 0, r = 0; r < n; ++r) {
  }
 #+end_src
 https://leetcode.cn/problems/longest-substring-without-repeating-characters/description/?envType=study-plan-v2&envId=top-100-liked
+
 
 ** 前缀和
 #+begin_src cpp :results output :namespaces std :includes <iostream>
@@ -129,6 +136,7 @@ https://www.acwing.com/problem/content/description/797/
 s[i+1] = s[i] + a[i]
 计算子数组和：下标l到r的子数组和
 s[r+1] - s[l]
+
 ** 二维矩阵
 #+begin_src cpp :results output :namespaces std :includes <iostream>
 const int DIRS[4][2] = {{0,1},{1,0},{0,-1},{-1,0}}; // 4个方向
@@ -143,6 +151,7 @@ if (x < 0 || x >= m || y < 0 || y >= n || matrix[x][y] == INT_MAX) {  // 判断�
 }
 #+end_src
 [[https://leetcode.cn/problems/spiral-matrix/description/][leetcode 54.螺旋矩阵]]
+
 
 ** 链表中间节点
 #+begin_src cpp :results output :namespaces std :includes <iostream>
@@ -159,6 +168,7 @@ ListNode* middleNode(ListNode* head) {
 #+end_src
 [[https://leetcode.cn/problems/reorder-list/description/][leetcode 143.重排链表]]
 [[https://leetcode.cn/problems/middle-of-the-linked-list/description/][leetcode 876.链表的中间节点]]
+
 
 ** 链表反转
 #+begin_src cpp :results output :namespaces std :includes <iostream>
@@ -179,6 +189,7 @@ public:
 #+end_src
 [[https://leetcode.cn/problems/reorder-list/description/][leetcode 143.重排链表]]
 [[https://leetcode.cn/problems/reverse-linked-list/description/][leetcode 206.反转链表]]
+
 
 ** 链表两数相加
 #+begin_src cpp :results output :namespaces std :includes <iostream>
@@ -202,6 +213,7 @@ ListNode* addTwo(ListNode* l1, ListNode* l2) {
 }
 #+end_src
 
+
 ** 合并有序链表
 #+begin_src cpp :results output :namespaces std :includes <iostream>
 ListNode* mergeTwoLists(ListNode* l1, ListNode* l2) {
@@ -221,6 +233,8 @@ ListNode* mergeTwoLists(ListNode* l1, ListNode* l2) {
 
 #+end_src
 https://leetcode.cn/problems/merge-two-sorted-lists/description/
+
+
 ** [[https://www.bilibili.com/video/BV17o4y187h1/?vd_source=4441bc96046659b39d059d583f36ff52][树形DP]]
 #+name: 104.二叉树的最大深度 [这是很多题的基础！]
 #+begin_src cpp :results output :namespaces std :includes <iostream>
@@ -267,6 +281,7 @@ public:
 [[https://leetcode.cn/problems/diameter-of-binary-tree/description/][leetcode 543.二叉树的直径]]
 [[https://leetcode.cn/problems/binary-tree-maximum-path-sum/description/][leetcode 124.二叉树中的最大路径和]]
 
+
 ** 用栈模拟二叉树的前/中序遍历
 #+begin_src cpp :results output :namespaces std :includes <iostream>
 vector<int> traversal(TreeNode* root) {
@@ -281,6 +296,7 @@ vector<int> traversal(TreeNode* root) {
 #+end_src
 [[https://leetcode.cn/problems/binary-tree-preorder-traversal/description/][leetcode 144.二叉树的前序遍历]]
 [[https://leetcode.cn/problems/binary-tree-inorder-traversal/description/][leetcode 94.二叉树的中序遍历]]
+
 
 ** 字符串拆分
 #+name: 版本1
@@ -315,6 +331,7 @@ vector<string> str_split(string s) {
 #+end_src
 https://leetcode.cn/problems/fan-zhuan-dan-ci-shun-xu-lcof/description/
 
+
 ** 合并区间
 1. 将区间按左端点排序
 2. 合并区间
@@ -342,6 +359,7 @@ void merge(vector<PII> &segs)
 #+end_src
 https://www.acwing.com/problem/content/805/
 https://www.nowcoder.com/practice/69f4e5b7ad284a478777cb2a17fb5e6a?tpId=295&tqId=691&sourceUrl=%2Fexam%2Foj%3FquestionJobId%3D10%26subTabName%3Donline_coding_page
+
 ** TODO 双指针
 1. 暴力写法
 2. 看有没有单调性，然后优化暴力写法
@@ -355,6 +373,7 @@ for (int i = 0, j = 0; i < n; ++i) {
 https://www.acwing.com/problem/content/801/
 https://www.acwing.com/problem/content/description/802/
 https://www.nowcoder.com/practice/b56799ebfd684fb394bd315e89324fb4?tpId=295&tqId=1008889&sourceUrl=%2Fexam%2Foj%3FquestionJobId%3D10%26subTabName%3Donline_coding_page
+
 ** 回溯
 #+name: 选哪个
 #+begin_src cpp :results output :namespaces std :includes <iostream>
@@ -386,6 +405,8 @@ void backtrack(参数列表) {
 #+begin_src cpp :results output :namespaces std :includes <iostream>
 
 #+end_src
+
+
 ** BFS
 #+begin_src cpp :results output :namespaces std :includes <iostream>
 void bfs(TreeNode* root) {
@@ -404,7 +425,9 @@ void bfs(TreeNode* root) {
 [[https://leetcode.cn/problems/maximum-width-of-binary-tree/description/][leetcode 662.二叉树最大宽度]]
 [[https://leetcode.cn/problems/check-completeness-of-a-binary-tree/description/][leetcode 958.二叉树的完全性检验]]
 
+
 ** ---------------------
+
 ** 数组模拟单链表
 #+begin_src cpp :results output :namespaces std :includes <iostream>
 // e[] 存储节点值，ne[] 存储节点的next指针，head存储链表头，idx表示当前用到哪个节点

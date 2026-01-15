@@ -1,5 +1,0 @@
-:PROPERTIES:
-:ID:       b6edf482-45ae-438e-9320-46bb6fce25f4
-:END:
-#+title: network
-#+filetags: index

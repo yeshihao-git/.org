@@ -2,13 +2,16 @@
 :ID:       54b77c23-d971-4522-b36a-5c620e6db2ff
 :END:
 #+title: org-clock
-#+filetags: org
+#+filetags: org-mode
 
 * org-clock
-1. 对 *任务计时，生成时长报告* ；可在 *Org Agenda*视图 中使用
-2. *常见函数* 如下
-   | 函数             | 作用                   |
-   |------------------+------------------------|
-   | org-clock-in     | 当前headline上开启时钟 |
-   | org-clock-out    | 当前headline上关闭时钟 |
-   | org-clock-report | 生成时长报告           |
+- org-clock :: org 中用于任务计时，生成任务报告的插件。可在 *Org Agenda*视图 中使用
+
+** 快速开始
+|------------------+---------------------|
+| 函数             | 作用                |
+|------------------+---------------------|
+| org-clock-in     | headline 上开启时钟 |
+| org-clock-out    | headline 上关闭时钟 |
+| org-clock-report | 生成时长报告        |
+|------------------+---------------------|

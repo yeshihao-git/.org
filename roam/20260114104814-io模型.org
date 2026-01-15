@@ -1,0 +1,124 @@
+:PROPERTIES:
+:ID:       66526945-06b7-4991-9704-8012e3968c74
+:END:
+#+title: IO模型
+#+filetags: os
+
+* IO模型
+- IO模型 :: 程序发起 I/O 请求后，等待和处理数据的机制。IO模型 *属性* 如下：
+  + 同步     :: 主动获取结果
+  + 异步     :: 被动获取结果（等内核通知）
+  + IO阻塞   :: 发起 IO 后，进程被挂起无法做任何事，IO完成获取到结果，后续可做其他事
+  + IO非阻塞 :: 发起 IO 后直接返回，进程可做其他事，后续主动检查IO是否完成获取结果
+
+*效率（由低到高）*
+1. [[id:e2bf5cfe-b9e0-4060-a03d-aacd6f7c2e75][基础IO模型]]
+2. [[id:44deab02-1427-47b8-be2c-32d36bd044d7][IO多路复用模型]]
+3. [[id:4b089051-0352-4e55-97b8-43624d611696][异步模型]]
+
+
+** 基础IO模型
+:PROPERTIES:
+:ID:       e2bf5cfe-b9e0-4060-a03d-aacd6f7c2e75
+:ROAM_ALIASES: 同步阻塞、同步非阻塞
+:END:
+- 同步阻塞   :: 发起 IO 后，进程挂起无法做其他事，IO完成后拿到结果（效率低）
+- 同步非阻塞 :: 发起 IO 后，进程可做其他事，但需主动检查IO是否完成获取结果（效率高）
+
+
+** IO多路复用模型
+:PROPERTIES:
+:ID:       44deab02-1427-47b8-be2c-32d36bd044d7
+:END:
+- IO多路复用模型 :: 操作系统提供的 高性能IO 模型（机制）。将一批文件描述符（fd）交给（操作系统）内核监视状态，返回里面可读/写的 fd 列表，适合 *IO密集、计算不密集* 场景（eg：网络服务器） *why？*[fn:1]
+  1. [[id:bc54b622-fb1e-41cf-af6e-876a86923529][select]]
+  2. [[id:78183794-d691-4478-92d4-51ca4e19851d][poll]]
+  3. [[id:52c4cf0a-3de5-4e9d-a314-821f6c2f39c3][epoll]]
+
+📎 [[https://www.bilibili.com/video/BV1RJ4m1b7cy/?vd_source=4441bc96046659b39d059d583f36ff52][bilibili-码农的荒岛求生]] [[https://xiaolincoding.com/os/8_network_system/selete_poll_epoll.html#epoll][小林coding]]
+
+
+*** select
+:PROPERTIES:
+:ID:       bc54b622-fb1e-41cf-af6e-876a86923529
+:END:
+*原理* ：
+用 =位图(bitmap)= 表示 fd集合
+调用 select 时：
+1. 拷贝位图（用户空间 -> [[id:cbf178f7-ce4b-435d-bc2c-55cb1e39816e][内核空间]]）
+2. 内核 *遍历* fd 检查若有读写事件，标记，拷贝位图（内核态 -> 用户态），否则阻塞
+3. 用户 *遍历* 找到可读可写 fd，处理
+
+*特点* ：
+1. 监听fd数量：1024（bitmap）
+2. 每次调用 select：2次完整fd集合的拷贝（用户态 <-> 内核态）；时间复杂度： =O(n)=
+
+
+*** poll
+:PROPERTIES:
+:ID:       78183794-d691-4478-92d4-51ca4e19851d
+:END:
+*原理* ：
+用 =链表= 表示 fd集合
+（同 select）
+
+*特点* ：
+1. 监听fd数量：无限制（bitmap）
+2. 每次调用 poll：2次完整fd集合的拷贝（用户态 <-> 内核态）；时间复杂度： =O(n)=
+
+
+*** epoll
+:PROPERTIES:
+:ID:       52c4cf0a-3de5-4e9d-a314-821f6c2f39c3
+:END:
+*原理* ：
+内核中用 =红黑树= 存放 监听fd集合， =就绪链表= 存放就绪fd   [[id:a863cc3e-4e55-497f-ad15-5ee4c37c296f][🖼 epoll对象]]
+1. epoll_create 在内核中创建 epoll对象（红黑树+就绪链表）
+2. epoll_ctl 将待监听的fd 加入红黑树；时间复杂度： =O(logn)=
+3. 红黑树中fd触发读写事件 加入就绪链表
+4. epoll_wait 从链表 取出fd；时间复杂度： =O(1)=
+
+*特点* ：
+1. 监听fd数量：无限制
+2. 增加监听fd：时间复杂度：O(logn)
+3. 返回就绪fd：时间复杂度：O(1)
+
+*水平触发LT* ：某个fd *就绪* (可读/可写) ，epoll_wait 每次调用都会返回
+*边缘触发ET* ：某个fd *未就绪 -> 就绪* ，epoll_wait 才会返回（减少系统调用次数，性能更好）
+
+
+**** 🖼 epoll对象 :ATTACH:
+:PROPERTIES:
+:ID:       a863cc3e-4e55-497f-ad15-5ee4c37c296f
+:END:
+[[attachment:_20250808_154635screenshot.png]]
+epoll对象中有：红黑树（需要监听的fd）、链表（就绪socket）
+
+
+** 异步模型
+:PROPERTIES:
+:ID:       4b089051-0352-4e55-97b8-43624d611696
+:END:
+- 异步 :: （本身就是非阻塞的）发起 IO 后直接返回，进程可做其他事，内核完成 IO 和数据拷贝后，主动通知进程获取结果。[[id:ea2287a9-0e9c-4596-9d69-4f31413d7817][🖼 同步、异步对比]]
+
+
+*** 🖼 同步、异步对比 :ATTACH:
+:PROPERTIES:
+:ID:       ea2287a9-0e9c-4596-9d69-4f31413d7817
+:END:
+#+name: 同步阻塞
+[[attachment:_20250826_163742screenshot.png]]
+
+#+name: 异步非阻塞
+[[attachment:_20250826_163911screenshot.png]]
+
+
+* Footnotes
+
+[fn:1]
+#+begin_comment
+linux中一切皆文件，对系统资源（eg：网络连接）的访问都是通过读写 fd 实现的
+- 场景1：现有一大批代表网络连接的 fd，我们对其中一个 fd 进行 阻塞read()，若当前没有数据可读，则 read()  *阻塞导致其他 fd 一直等待*
+- 场景2：现有一大批代表网络连接的 fd，我们对其中一个 fd 进行 非阻塞read()，若没有数据则返回，我们需要 *轮询所有 fd*
+能用于网络场景也能用于其他IO场景
+#+end_comment

@@ -1,0 +1,32 @@
+:PROPERTIES:
+:ID:       decaaaf0-059b-47df-bb4c-721fd00f9997
+:END:
+#+title: rofi
+#+filetags: tools
+
+* rofi
+- rofi :: 快速应用程序启动器（类似 KDE 中的 KRunner，同类的还有 dmenu）
+
+
+** rofi的安装和配置
+:PROPERTIES:
+:ID:       11c2c3ad-81ed-40ff-af7c-f2ba2d89890c
+:END:
+#+begin_src bash
+sudo pacman -S rofi                                                                          # 1. 安装
+mkdir -p ~/.config/rofi                                                                      # 2. 生成默认配置
+rofi -dump-config > ~/.config/rofi/config.rasi
+rofi -show <mode>                                                                            # 3. 运行
+~/.config/i3/config 中注释掉 dmenu 部分的配置，解注释 rofi 部分的配置                        # 4. i3wm 中集成
+https://github.com/newmanls/rofi-themes-collection （按步骤进行，注意要拷贝 template文件夹） # 5. 使用主题
+rofi-theme-selector                                                                          # 6. 预览主题
+~/.config/rofi/config.rasi 中写入 @theme "主题名"                                            # 7. 应用主题
+#+end_src
+
+
+** rofi启动chrome使用系统代理
+:PROPERTIES:
+:ID:       7a6992ad-b568-4a9a-b721-4eabf92cd4e5
+:END:
+1. chrome 不会自动使用系统代理（firefox可以），因此需要通过命令行的形式设置代理： *google-chrome-stable --proxy-server="http://127.0.0.1:7890"*
+2. rofi 使用 drun模式 时，会读取 .desktop文件，因此，先拷贝一份 chrome的.desktop文件（避免系统级的修改）： *cp //usr/share/applications/google-chrome.desktop ~//.local/share/applications* ，在 用户级的.desktop文件 中在每一个 Exec行 写入：--proxy-server="http://127.0.0.1:7890"

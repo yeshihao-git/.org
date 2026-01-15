@@ -2,35 +2,461 @@
 :ID:       a47e0d7f-0aab-48e8-8101-9dd491e5d4d3
 :END:
 #+title: pytorch
-#+filetags: index
+#+filetags: python
 
-* 张量和NumPy数组之间有什么区别和联系？[[https://docs.pytorch.org/tutorials/beginner/basics/tensorqs_tutorial.html][参考]]
-- 当张量在CPU中时，和NumPy数组共享底层的内存(意味着改变其中一个，另一个也会改变)；但是张量可以使用GPU计算
-* 什么是神经网络？训练神经网络时，前向传播和反向传播做了什么？[[https://docs.pytorch.org/tutorials/beginner/blitz/autograd_tutorial.html][参考]]
-- 神经网络是嵌套函数的集合，由参数组成(权重+偏置)
-- 前向传播中神经网络对输入进行预测；在反向传播中将预测值与标签对比，计算损失，根据损失计算梯度(误差相对于参数的导数)，更新参数[fn:1]
-* 什么是计算图？
-- 有向无环图(DAG)：根节点为输出张量，叶子节点为输入张量，其余节点为操作符或中间张量；从根节点到叶子节点，自动使用链式规则计算梯度(.grad_fn)，更新到叶子节点的.grad属性；每次反向传播时，自动生成新的计算图
-* 什么是autograd？[[https://docs.pytorch.org/tutorials/beginner/blitz/autograd_tutorial.html][参考]] autograd在前向传播中做了什么？autograd在反向传播中做了什么？[[https://docs.pytorch.org/tutorials/beginner/basics/autogradqs_tutorial.html][参考]]
-- pytorch中的自动微分引擎
-- 通过操作符(如：z = x + y)计算获得结果张量z；将该操作的梯度计算函数(.grad_fn)附加到z上(记录生成z的操作)
-- 根据z.grad_fn计算梯度，通过链式法则将梯度累加到叶子节点的grad中：x.grad、y.grad(requires_grad=True的叶子张量)
-  + 综合示例 :: [fn:2]
-* 优化器的作用是什么？
-- 使用反向传播中叶子节点的.grad中的梯度更新参数(requires_grad=True的叶子张量)
-* pytorch中的dim？[[https://www.cnblogs.com/lipu123/p/17782804.html][参考]] [[https://blog.csdn.net/xinjieyuan/article/details/105205326][参考2]]
-- dim就是张量形状从左到右的维度[fn:3]，指定dim就是指定在那个维度上进行操作
-* 什么是Seq2Seq模型？有什么特点？应用场景？[[https://docs.pytorch.org/tutorials/intermediate/seq2seq_translation_tutorial.html][参考]]
-- 包含了两个RNN的模型，分别称为编码器和解码器；当输入序列进入编码器，得到向量，向量进入解码器，得到输出序列
-- 单RNN每个输出都要对应一个输入，Seq2Seq模型则摆脱了序列长度[fn:4]、顺序的问题
-- 适用于单词翻译
+* 基础
+*张量* 和 *NumPy数组* 的区别：当张量在CPU中时，和NumPy数组共享底层的内存（意味着改变其中一个，另一个也会改变），但是张量可以使用GPU计算
+
+- 神经网络 :: 是嵌套函数的集合，由参数组成（权重+偏置）
+  1. 前向传播时，神经网络对输入进行预测
+  2. 反向传播时，将预测值与标签对比，计算损失，根据损失计算梯度（误差相对于参数的导数），更新参数（weight = weight - learning_rate * gradient）
+
+- 计算图 :: 是有向无环图（DAG），根节点为输出张量，叶子节点为输入张量，其余节点为操作符或中间张量；从根节点到叶子节点，自动使用链式规则计算梯度(.grad_fn)，更新到叶子节点的.grad属性；每次反向传播时，自动生成新的计算图
+
+- autograd :: pytorch中的自动微分引擎 [fn:8]
+- autograd在前向传播时：通过操作符(如：z = x + y)计算获得结果张量z；将该操作的梯度计算函数(.grad_fn)附加到z上(记录生成z的操作)
+- autograd在反向传播时：根据z.grad_fn计算梯度，通过链式法则将梯度累加到叶子节点的grad中：x.grad、y.grad(requires_grad=True的叶子张量)
+
+- 优化器 :: 使用反向传播中叶子节点的.grad中的梯度更新参数(requires_grad=True的叶子张量)
+
+- Seq2Seq模型 :: 包含了两个RNN的模型，分别称为编码器和解码器；当输入序列进入编码器，得到向量，向量进入解码器，得到输出序列
+  1. 单RNN每个输出都要对应一个输入，Seq2Seq模型则摆脱了序列长度、顺序的问题（输入长度和输出长度可以不一致，输入与输出的对应不一定是顺序的）
+  2. 适用于单词翻译
+
+
+** dim
+:PROPERTIES:
+:ID:       79c2319e-5580-49ca-835e-40cacca76271
+:END:
+dim 的数字0、1、2、3... 对应张量形状从左到右的数字的所在的轴
+#+begin_example bash
+张量形状：(num1, num2, num3...)
+dim=0对应num1，dim=1对应num2，...
+#+end_example
+
+#+name: 示例
+#+begin_example python
+a = np.array([[1, 2], [3, 4]])
+np.mean(a)                     # 2.5
+np.mean(a, axis=0)             # array([2., 3.])
+np.mean(a, axis=1)             # array([1.5, 3.5])
+
+########
+# 解释 #
+########
+# [[1, 2],
+#  [3, 4]]
+# 沿dim0（行的方向）操作：先取出1 3，计算平均值 2，再取出2 4，计算平均值 3
+# 沿dim1（列的方向）操作：先取出1 2，得 1.5，再取出3 4，得3.5
+#+end_example
+
+
+** 广播机制
+:PROPERTIES:
+:ID:       2bee806e-3a1e-48cb-823b-0ddb5071e188
+:END:
+规则：
+1. 两个张量 形状不同，则维度数较少张量 *扩充维度个数* -> 形状一致
+#+name: 维度个数不同
+#+begin_src python
+a = torch.randn(2,3)   # (2, 3)
+b = torch.randn(3)     # ( , 3)
+c = a + b              # (2, 3)
+#+end_src
+
+2. 两个张量 维度长度不同，则维度长度较少张量 *扩充维度长度* （复制维度的值）-> 维度长度一致
+#+name: 维度个数一样，维度长度不同
+#+begin_src python
+a = torch.rand(2, 1, 1, 3)  # (2, 1, 1, 3)
+b = torch.rand(4, 2, 3)     # (1, 4, 2, 3)
+c = a + b                   # (2, 4, 2, 3)
+#+end_src
+
+
+* torch.nn
+
+
+** torch.nn.Parameter
+:PROPERTIES:
+:ID:       58fe2d0c-ae2b-4b43-aa69-129517b7377a
+:END:
+- torch.nn.Parameter :: 用于将 不可训练Tensor 变成 *可训练的parameter* ，并且将 该parameter *注册到宿主模型* 中（model.parameters()中会包含该parameter），在参数优化时 *自动一起优化* [fn:1]
+  1. parameter *本质是 Tensor*
+  2. nn.Parameter = nn.parameter.Parameter
+
+
+*** 区别：nn.Parameter(tensor) 和 对tensor使用requires_grad=True
+后者虽然也变成 可训练的parameter，但是 *不会注册到 model.parameters()* 中 [fn:2]
+
+
+** torch.nn.Softmax
+:PROPERTIES:
+:ID:       f2b1d8cc-9ce7-4238-b617-56f4d448e7be
+:END:
+- torch.nn.Softmax :: 用于将 *某个维度的值* 落在 =(0,1)= 区间且和为 =1= ，其次，它能 *放大差异* （大的更大，小的更小），对 *梯度计算友好* [fn:3]
+
+
+** torch.nn.Linear
+:PROPERTIES:
+:ID:       43b08e99-87bd-40cd-aa60-836df4a58be5
+:END:
+- torch.nn.Linear :: 用于个将张量 *映射到新的特征空间* ，方便后续计算（后续计算可能需要某些形状要求）[fn:4]
+
+
+** torch.nn.Embedding
+:PROPERTIES:
+:ID:       9b926d41-91bd-4a88-802f-0244856ea7ff
+:END:
+- torch.nn.Embedding :: 用于将 *离散的符号* （eg：单词ID）转换为 *连续的可学习的张量* （也称嵌入张量，随机初始化的，后续通过大量语料训练它们之间的关系，例如：猫和狗都属于动物，因此它们在向量空间的距离更近），可以通过 =.weight= 的方式访问内部所有张量；也能通过 *索引* 形式访问对应张量 [fn:5]
+
+
+** torch.nn.LayerNorm
+:PROPERTIES:
+:ID:       4e661ec5-6b8b-4d57-83f9-18499ac89c68
+:END:
+- torch.nn.LayerNorm :: 在某些维度上进行 *归一化（将值分布拉回 正态分布 -> 值落入激活函数敏感区 -> 梯度变大 -> 避免梯度消失，学习收敛变快，加快学习速度）*[fn:6]
+
+
+** torch.nn.ReLU
+:PROPERTIES:
+:ID:       1762069c-5bf2-4875-8794-5ce986caab9b
+:END:
+- torch.nn.ReLU :: 激活函数，负数变 0，正数保持原样
+#+begin_src python
+m = nn.ReLU()
+input = torch.randn(2)
+output = m(input)
+#+end_src
+
+
+** torch.nn.Dropout
+:PROPERTIES:
+:ID:       62201a11-1850-439a-9783-8fa5a676ecc4
+:END:
+- torch.nn.Dropout :: 训练期间，输入张量中的元素 以 概率p 随机被置为0，保留下来的元素会进行缩放（乘以 1/(1-p)）以保持整体期望值不变 [fn:7]
+
+
+* torch.Tensor
+
+
+** torch.Tensor.matmul
+:PROPERTIES:
+:ID:       fbc7f529-bc12-4cc1-b5bb-cb40fb12adf2
+:END:
+- torch.Tensor.matmul :: 矩阵乘法，等价于 =@=
+
+
+*** 规则
+1. input、other 都是 1D -> 点积（对应元素相乘后相加）
+#+begin_src python
+x = torch.rand(2)
+y = torch.rand(2)
+torch.matmul(x,y).size() # torch.Size([])
+#+end_src
+2. input、other 都是 2D -> 矩阵乘法
+#+begin_src python
+x = torch.rand(2,4)
+y = torch.rand(4,3)       # 维度也要对应才可以乘
+torch.matmul(x,y).size()  # torch.Size([2, 3])
+#+end_src
+3. input 1D、other 2D   -> input 广播到 2D（input前加一维），矩阵乘法得到结果后去掉此维度
+#+begin_src python
+x = torch.rand(4)   # 1D
+y = torch.rand(4,3) # 2D
+torch.matmul(x,y).size() # torch.Size([3])
+
+# 扩充x =>(,4)
+# 相乘x(,4) * y(4,3) =>(,3)
+# 去掉1D =>(3)
+
+#+end_src
+4. input 1D、other > 2D -> 规则同 =3.=
+#+begin_src python
+y = torch.randn(3)
+x = torch.randn(2, 3, 4)
+torch.matmul(y, x).size() # torch.Size([2, 4])
+#+end_src
+5. input 2D、other 1D   -> 点积
+#+begin_src python
+y = torch.rand(4,3) # 2D
+x = torch.rand(3)   # 1D
+torch.matmul(y,x).size() # torch.Size([4])
+#+end_src
+6. input > 2D、other 1D -> 规则同 =5.=
+#+begin_src python
+x = torch.randn(2, 3, 4)
+y = torch.randn(4)
+torch.matmul(x, y).size() # torch.Size([2, 3])
+#+end_src
+7. input ND、other ND -> *最右边两维 矩阵乘法，前边维度广播*
+#+begin_src python
+x = torch.randn(2,2,4)
+y = torch.randn(2,4,5)
+torch.matmul(x, y).size() # torch.Size([2, 2, 5])
+#+end_src
+此例 维度数不同，依旧广播
+#+begin_src python
+x = torch.randn(10,1,2,4)
+y = torch.randn(2,4,5)
+torch.matmul(x, y).size() # torch.Size([10, 2, 2, 5])
+#+end_src
+
+
+** torch.Tensor.permute
+:PROPERTIES:
+:ID:       7ee9061d-7442-4720-aced-6238f4bf1c87
+:END:
+- torch.Tensor.permute :: 调整维度顺序
+#+begin_src python
+x = torch.randn(3, 5, 2)
+y = x.permute(1, 2, 0)     # 形状变为 (5, 2, 3)
+#+end_src
+
+
+** torch.Tensor.transpose
+:PROPERTIES:
+:ID:       906670e5-a000-46a2-af1e-2a4299864016
+:END:
+- torch.Tensor.transpose :: 返回输入张量的转置版本，交换 dim0 和 dim1
+#+begin_src python
+x = torch.randn(2, 3)
+x
+# 输出：
+# tensor([[-0.6609,  1.0183, -0.0085],
+#        [ 0.6677,  2.1739, -0.9496]])
+
+torch.transpose(x, 0, 1)      # 交换 dim0 和 dim1
+# 输出：
+# tensor([[-0.6609,  0.6677],
+#        [ 1.0183,  2.1739],
+#        [-0.0085, -0.9496]])
+#+end_src
+
+
+** torch.Tensor.unsqueeze
+:PROPERTIES:
+:ID:       c3e108e1-d3f8-440e-87d1-03bd1730936b
+:END:
+- torch.Tensor.unsqueeze :: 在张量里面插入新维度（该维度长度为1）
+#+begin_src python
+x = torch.tensor([1, 2, 3])  # 形状 [3]
+y = x.unsqueeze(0)           # 在维度0插入新维度
+
+print("x.shape:", x.shape)   # torch.Size([3])
+print("y.shape:", y.shape)   # torch.Size([1, 3])
+
+
+x = torch.rand(2, 3)         # 形状 [2, 3]
+y = x.unsqueeze(1)           # 在维度1插入新维度
+
+print("y.shape:", y.shape)   # torch.Size([2, 1, 3])
+#+end_src
+
+
+** torch.Tensor.repeat
+:PROPERTIES:
+:ID:       1d9d958b-2d53-4b8c-9167-17062be0f1fd
+:END:
+- torch.Tensor.repeat :: 在张量指定维度重复，返回新张量
+#+begin_src python
+x = torch.tensor([1, 2, 3])
+x.repeat(4, 2)
+# tensor([[ 1,  2,  3,  1,  2,  3],
+#         [ 1,  2,  3,  1,  2,  3],
+#         [ 1,  2,  3,  1,  2,  3],
+#         [ 1,  2,  3,  1,  2,  3]])
+
+b = torch.tensor(
+    [
+        [1, 1, 1, 0],
+        [1, 1, 0, 0],
+        [1, 0, 0, 0],
+    ]
+)
+print(b.size())
+mask = b.unsqueeze(dim=1)
+print(mask.size())
+print(mask)
+
+mask.repeat(1,4,1)
+
+# torch.Size([3, 4])
+# torch.Size([3, 1, 4])
+# tensor([[[1, 1, 1, 0]],
+
+#         [[1, 1, 0, 0]],
+
+#         [[1, 0, 0, 0]]])
+# tensor([[[1, 1, 1, 0],
+#          [1, 1, 1, 0],
+#          [1, 1, 1, 0],
+#          [1, 1, 1, 0]],
+
+#         [[1, 1, 0, 0],
+#          [1, 1, 0, 0],
+#          [1, 1, 0, 0],
+#          [1, 1, 0, 0]],
+
+#         [[1, 0, 0, 0],
+#          [1, 0, 0, 0],
+#          [1, 0, 0, 0],
+#          [1, 0, 0, 0]]])
+#+end_src
+
+
+** torch.Tensor.split
+:PROPERTIES:
+:ID:       ee0e0e2c-7499-447a-ac0e-6b8844984f16
+:END:
+- torch.Tensor.split :: 将张量切成块
+#+begin_src python
+a = torch.arange(10).reshape(5, 2)
+a
+# tensor([[0, 1],
+#         [2, 3],
+#         [4, 5],
+#         [6, 7],
+#         [8, 9]])
+
+torch.split(a, 2)   # 第2个参数：块的大小
+                    # 第3个参数：在哪个维度切分；默认dim=0
+# (tensor([[0, 1],
+#          [2, 3]]),
+#  tensor([[4, 5],
+#          [6, 7]]),
+#  tensor([[8, 9]]))
+
+torch.split(a, [1, 4])
+# (tensor([[0, 1]]),
+#  tensor([[2, 3],
+#          [4, 5],
+#          [6, 7],
+#          [8, 9]]))
+#+end_src
+
+
+** torch.Tensor.masked_fill
+:PROPERTIES:
+:ID:       542e74b7-948d-4aa4-94b4-d80c3939e4f4
+:END:
+- torch.Tensor.masked_fill :: masked_fill(mask, value)
+  1. mask：与目标张量形状一样的布尔张量（决定哪些位置被替换）
+  2. value：填充的值
+#+name: bool元素的 mask矩阵
+#+begin_src python
+x = torch.tensor([[1, 2, 3],
+                  [4, 5, 6]])
+mask = torch.tensor([[True, False, True],     # 掩码（True 的位置会被替换）
+                     [False, True, False]])
+result = x.masked_fill(mask, 0)               # 替换的值为0
+print(result)
+
+# tensor([[0, 2, 0],
+#         [4, 0, 6]])
+#+end_src
+#+name: 0 1 元素的 mask矩阵
+#+begin_src python
+x = torch.tensor([[1, 2, 3],
+                  [4, 5, 6]])
+mask = torch.tensor([[1, 1, 0],
+                     [1, 0, 0]])
+result = x.masked_fill(mask == 0, 0) # mask矩阵中 0 对应的位置替换为 0
+# tensor([[1, 2, 0],
+#         [4, 0, 0]])
+
+x = torch.tensor([[1, 2, 3],
+                  [4, 5, 6]])
+mask = torch.tensor([[1, 1, 0],
+                     [1, 0, 0]])
+result = x.masked_fill(mask == 1, 0) # mask矩阵中 1 对应的位置替换为 0
+# tensor([[0, 0, 3],
+#         [0, 5, 6]])
+#+end_src
+
+是 =torch.Tensor.masked_fill_= 的 Out-of-place（非原位版本）
+- out-of-place（非原位版本） :: 会返回新张量，原张量保持不变
+- in-place（原位版本） :: 直接修改原张量
+
+
+** torch.Tensor.tril
+:PROPERTIES:
+:ID:       af1e013e-cec2-46e1-b456-0bee9804e227
+:END:
+- torch.Tensor.tril :: 生成下三角
+#+begin_src python
+a = torch.randn(3, 3)
+a
+# tensor([[-1.0813, -0.8619,  0.7105],
+#         [ 0.0935,  0.1380,  2.2112],
+#         [-0.3409, -0.9828,  0.0289]])
+torch.tril(a)
+# tensor([[-1.0813,  0.0000,  0.0000],
+#         [ 0.0935,  0.1380,  0.0000],
+#         [-0.3409, -0.9828,  0.0289]])
+#+end_src
+
+
+** torch.Tensor.view
+:PROPERTIES:
+:ID:       d7b635b5-1342-440e-95f9-eecc6288fcc3
+:END:
+- torch.Tensor.view :: 用于改变张量形状， *共享原张量的底层数据* ，因此对 view 修改会改变底层张量数据
+#+begin_src python
+x = torch.randn(4, 4)
+x.size()
+# torch.Size([4, 4])
+
+y = x.view(16)
+y.size()
+# torch.Size([16])
+
+z = x.view(-1, 8)  # -1 是占位符，由其他维度推导
+z.size()
+# torch.Size([2, 8])
+
+a = torch.randn(1, 2, 3, 4)
+a.size()
+# torch.Size([1, 2, 3, 4])
+
+b = a.transpose(1, 2)  # 交换 2，3 维度
+b.size()
+# torch.Size([1, 3, 2, 4])
+
+c = a.view(1, 3, 2, 4)
+c.size()
+# torch.Size([1, 3, 2, 4])
+
+torch.equal(b, c)
+# view 没有改变内存中的张量布局，因此 False
+
+#+end_src
+使用条件：张量满足 *内存连续性* ，可以用 =torch.Tensor.is_contiguous= 判断，使用 =torch.Tensor.contiguous= 将不连续张量转为连续张量，有些操作会改变步长（内存中数据的访问方式），导致内存不连续
+- 内存连续性 :: 数据在内存中以行优先顺序存储
+- 步长 :: 定义了如何访问内存中的数据：描述了 *维度之间 移动所需的步数* ，通过 =torch.Tensor.stride= 查看
+#+begin_example bash
+张量 x 形状 ：(2 , 3, 4)    # 矩阵，行，列
+步长        ：(12, 4, 1)    # 移动到下一个矩阵，移动到下一行，移动到下一列 的步数
+12          ：从当前矩阵移动到下一个矩阵 需要 3 x 4 = 12 步
+4           ：从当前行到下一行 需要 4 步（一行4列）
+1           ：从当前列到下一列 需要 1 步
+#+end_example
+
+
+* 工程问题
+** import pytorch：undefined symbol: iJIT_NotifyEvent
+:PROPERTIES:
+:ID:       be5cbaaf-6c78-4cb9-beb7-2c62abc449f4
+:END:
+#+name: 解决
+#+begin_src bash
+conda install mkl=2024.0 # 对 mkl 进行降级
+#+end_src
+错误原因：mkl 包版本不匹配，conda 和 [[id:1f8e3fa6-ad53-4b9c-8d06-43ffa046fb1c][pip]] 使用不同的 mkl 版本
+
 
 * Footnotes
 
-[fn:1]
-weight = weight - learning_rate * gradient
-
-[fn:2]
+[fn:8]
 #+begin_src python
 import torch
 
@@ -48,8 +474,150 @@ print(b.grad)       # tensor([-12.,  -8.])
 print(Q.grad_fn)    # <SubBackward0 object at 0x7d0b9da3b010> => 梯度计算函数对象：表示减法操作的反向传播规则
 #+end_src
 
+
+[fn:1]
+#+begin_src python
+import torch
+import torch.nn as nn
+a=torch.tensor([1,2],dtype=torch.float32)
+print(a)
+print(nn.Parameter(a))
+print(nn.parameter.Parameter(a))
+
+# tensor([1., 2.])
+# Parameter containing:
+# tensor([1., 2.], requires_grad=True)
+# Parameter containing:
+# tensor([1., 2.], requires_grad=True)
+#+end_src
+
+[fn:2]
+#+begin_src python
+class mod(nn.Module):
+    def __init__(self):
+        super(mod,self).__init__()
+        self.w1=torch.tensor([1,2],dtype=torch.float32,requires_grad=True) # 带梯度的普通tensor
+        a=torch.tensor([3,4],dtype=torch.float32)                          # parameter
+        self.w2=nn.Parameter(a)
+    def forward(self,inputs):
+        o1=torch.dot(self.w1,inputs)
+        o2=torch.dot(self.w2,inputs)
+        return o1+o2
+
+model=mod()
+for p in model.parameters():
+    print(p)
+
+# Parameter containing:
+# tensor([3., 4.], requires_grad=True)
+#+end_src
+
 [fn:3]
-shape(2,3,4,5,6) 从左到右就是dim=0、1、2、3、4；shape(1,2,3) 从左到右dim=0、1、2
+#+begin_src python
+logits = torch.tensor([1.0, 2.0, 3.0])
+# Softmax 计算
+softmax = nn.Softmax(dim=0)
+probs = softmax(logits)  # 输出: [0.0900, 0.2447, 0.6652]，和为1
+                         # 相比与 [1.0, 2.0, 3.0] 放大数据间的差异
+# 温度系数调整
+T = 0.5
+probs_T = softmax(logits / T)  # 输出: [0.0159, 0.1173, 0.8668] 放大差异的程度增加
+probs_T
+#+end_src
 
 [fn:4]
-输入长度和输出长度可以不一致；输入与输出的对应不一定是顺序的
+#+begin_src python
+m = nn.Linear(20, 30)
+input = torch.randn(128, 20)
+output = m(input)
+print(output.size()) # 输出：torch.Size([128, 30])
+#+end_src
+
+[fn:5]
+#+begin_src python
+import torch
+import torch.nn as nn
+# 创建嵌入层：5个符号（如5个单词），每个符号3维
+embedding = nn.Embedding(5, 3)
+
+# 1. 访问全部嵌入向量（.weight）
+print("所有嵌入向量:\n", embedding.weight)  # 形状 [5, 3]
+
+# 2. 通过索引访问部分向量
+input_idx = torch.tensor([0, 2, 4])  # 查询索引0、2、4的向量
+output = embedding(input_idx)
+print("\n索引对应的向量:\n", output)  # 输出形状 [3, 3]
+
+# 验证等价性
+print("\n验证:", output[1] == embedding.weight[2])  # 输出: tensor([True, True, True])
+#+end_src
+
+[fn:6]
+#+name: 示例1
+#+begin_src python
+# NLP Example
+# nlp 是在 单个样本内进行归一化（比如：[句子，词，特征]，是将一个句子中的所有词向量的所有特征进行归一化）
+batch, sentence_length, embedding_dim = 20, 5, 10
+embedding = torch.randn(batch, sentence_length, embedding_dim)
+layer_norm = nn.LayerNorm(embedding_dim) # 在 embedding_dim 维度进行归一化
+# Activate module
+layer_norm(embedding)
+
+# Image Example
+N, C, H, W = 20, 5, 10, 10
+input = torch.randn(N, C, H, W)
+layer_norm = nn.LayerNorm([C, H, W]) # 在 [C, H, W] 上进行归一化
+output = layer_norm(input)
+#+end_src
+
+#+name: 示例2
+#+begin_src python
+import torch
+import torch.nn as nn
+import numpy as np
+a = np.array([[1, 20, 3, 4],
+               [5, 6, 7, 8,],
+               [9, 10, 11, 12]], dtype=np.double)
+b = torch.from_numpy(a).type(torch.FloatTensor)
+
+layer_norm = nn.LayerNorm(4, eps=1e-6) # 最后一个维度大小为4，NOTE eps 参数用于防止除 0，取一个很小的数就行
+c = layer_norm(b)
+print(c)
+# 结果：
+# tensor([[-0.7913,  1.7144, -0.5275, -0.3956],
+#         [-1.3416, -0.4472,  0.4472,  1.3416],
+#         [-1.3416, -0.4472,  0.4472,  1.3416]],
+#        grad_fn=<NativeLayerNormBackward0>)
+#-----------------------------------------------------------------------------------
+# 对最后两个维度标准化
+layer_norm = nn.LayerNorm([3, 4], eps=1e-6)
+c = layer_norm(b)
+print(c)
+# 结果：
+# tensor([[-1.4543e+00,  2.4932e+00, -1.0388e+00, -8.3105e-01],
+#         [-6.2329e-01, -4.1553e-01, -2.0776e-01,  1.1921e-07],
+#         [ 2.0776e-01,  4.1553e-01,  6.2329e-01,  8.3105e-01]],
+#        grad_fn=<NativeLayerNormBackward0>)
+#+end_src
+
+[fn:7]
+#+begin_src python
+import torch
+import torch.nn as nn
+dropout = nn.Dropout(p=0.5)
+input = torch.randn(4, 3)
+print(input)
+output = dropout(input)
+print(output)
+
+# 这里 没被置0的元素进行缩放（乘以 2=1/(1-0.5)）
+# tensor([[-0.4381,  0.3995,  0.3502],
+#         [-0.1217,  0.5735, -0.6830],
+#         [ 2.1061,  1.1834, -2.0013],
+#         [-1.1990, -0.7124,  0.2790]])
+
+# tensor([[-0.8763,  0.7989,  0.7004],
+#         [-0.2434,  1.1471, -1.3660],
+#         [ 0.0000,  2.3667, -0.0000],
+#         [-0.0000, -0.0000,  0.0000]])
+#+end_src

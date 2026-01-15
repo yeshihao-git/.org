@@ -1,7 +1,0 @@
-:PROPERTIES:
-:ID:       cf549c3a-e5fb-4125-a574-4caf8cf42c08
-:END:
-#+title: 原码、反码、补码
-#+filetags: cpp
-
-* 原码、反码、补码 [[https://www.runoob.com/w3cnote/sign-magnitude.html][菜鸟教程]]

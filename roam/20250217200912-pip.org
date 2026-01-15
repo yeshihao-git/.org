@@ -5,26 +5,114 @@
 #+filetags: python
 
 * pip
-[[id:4b0b3990-5e14-47a4-ab66-a2e2c50c9ade][pip install错误：OSError: [Errno 28] No space left on device]]
-[[id:cfe89b94-ace5-4816-896f-a1ffce8d10c5][pip安装torch(带cuda)]]
-[[id:e00f1993-5152-4a4c-866c-f0fe91761cb8][pip安装torch-scatter]]
-[[id:6c6faca5-847e-4b1a-a882-4246f293b573][pip安装dgl]]
-[[id:58345174-9871-418d-b753-828271b9b5c1][pip安装timm]]
-[[id:8a2869e2-dc0b-40e9-acf5-4f80fb954de8][pip安装yaml]]
-[[id:5fb308e4-2d7c-43ba-8c39-07cc94d02c2d][pip安装faiss]]
+- pip :: python 的默认包管理器
+  1. pip 优先识别和安装 二进制分发包（ =.whl= ）
+
+- 二进制分发包 :: （ =.whl= ）已经 *构建、编译* 好的包，用户无需重新编译，只需 *安装*
+  1. 由 setuptools（打包工具）、wheel（专门的 .whl 打包工具）生成
+  2. 统一托管到 *python官方包索引（PyPI，Python Package Index）* 供开发者下载
 
 
-* 使用
-** 查看pip使用的配置文件
+** 快速开始
+#+begin_example bash
+pip -h
+#+end_example
+
+
+** pip install：OSError: [Errno 28] No space left on device
+:PROPERTIES:
+:ID:       5c57cfd9-13d4-431b-8a66-c5ad436d0ea6
+:END:
+删除 linux 中 =~/= 中的文件（相当于 windows C盘的内容）
+
+
+** pip安装dgl
+:PROPERTIES:
+:ID:       5ab33b5e-84a5-4ff7-8175-2ece43427cc2
+:END:
+1. [[https://www.dgl.ai/pages/start.html][新版本]] [[https://conda.anaconda.org/dglteam/linux-64][历史版本]] 下载对应的.tar.bz2包
+2. 解压到目标路径：可以通过以下方式查看
 #+begin_src bash
-pip config list --verbose
+python
+import site
+print(site.getsitepackages())
+#+end_src
+
+📎 [[https://blog.csdn.net/qq_44583635/article/details/127341198][参考]]
+
+
+** pip安装faiss
+:PROPERTIES:
+:ID:       adbcdb5b-9191-48e9-9f00-22363279b399
+:END:
+#+begin_example bash
+pip install faiss-gpu
+#+end_example
+
+
+** pip安装yaml
+:PROPERTIES:
+:ID:       316fa83b-390d-4281-a94d-210d0a7050ac
+:END:
+#+begin_example bash
+pip install pyyaml
+#+end_example
+
+
+** pip安装timm
+:PROPERTIES:
+:ID:       05367686-0d73-4875-9665-64a32a9b58d9
+:END:
+#+begin_src bash
+pip install timm          # 失败
+conda install timm        # 失败
+pip install timm          # 加镜像源 失败
+pip install timm==0.4.12  # 成功 速度很快
 #+end_src
 
 
+** pip安装torch（带cuda）
+:PROPERTIES:
+:ID:       57fc35d2-108d-4c30-a1e4-50af13b513d5
+:END:
+1. 查看官网：选择安装方式：wheel(推荐)、conda
+   [[https://pytorch.org/get-started/locally/][新版本]] [[https://pytorch.org/get-started/previous-versions/][老版本]]
+2. 验证是否安装成功
+#+begin_src bash
+python -c 'import torch;print(torch.__version__);print(torch.version.cuda)'
+#+end_src
+3. 若import torch出现模块未找到问题：
+   [[id:f3c23bfd-80db-4d03-a687-3e520c4a7901][conda环境中存在pytorch但是import时找不到模块]]
 
-* 配置
-- 用户级配置 ::
-  #+begin_example
-  ~/.config/pip/pip.conf
-  #+end_example
 
+** pip安装torch-scatter
+:PROPERTIES:
+:ID:       8c7ad37d-07cc-4cc7-a99e-dc3549c4ea7c
+:END:
+1. 进入 https://data.pyg.org/whl/ ：这个网站里都是 *pytorch依赖的预编译二进制包*
+2. 找到对应版本的 [[id:7216a5c5-6580-4f5f-b5d6-5f63349e6875][.whl文件]]
+3. pip install 即可
+#+begin_src bash
+pip uninstall torch-scatter
+pip install torch-scatter --upgrade -f https://data.pyg.org/whl/torch-1.12.1+cu113.html
+#+end_src
+
+
+** pip安装sparsesvd
+:PROPERTIES:
+:ID:       4a9b4eb1-d75b-495c-9170-0b45e4bc0482
+:END:
+1. 前置安装
+#+begin_src bash
+pip install numpy
+pip install scipy
+pip install cython
+#+end_src
+2. 下载 https://pypi.org/project/sparsesvd/#files 中的压缩包
+3. 解压后进入
+4. 安装
+#+begin_src bash
+python setup.py test
+python setup.py install
+pip install sparsesvd
+#+end_src

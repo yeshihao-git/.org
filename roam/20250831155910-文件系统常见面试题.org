@@ -1,12 +1,16 @@
 :PROPERTIES:
 :ID:       2087337b-11b7-493b-9492-943e3b38969c
 :END:
-#+title: 文件系统常见面试题
-#+filetags: file_system
+#+title: 文件系统
+#+filetags: fs
 
-* 文件系统基本组成 [[https://xiaolincoding.com/os/6_file_system/file_system.html#%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F%E7%9A%84%E5%9F%BA%E6%9C%AC%E7%BB%84%E6%88%90][小林coding]]
-** 索引节点和目录项
-文件 关联的2个数据结构：[[id:6e6aae7c-ce87-40dc-ac53-1c0ff61e6f4e][图:索引节点、目录项、文件数据]]
+* 文件系统
+** 文件系统基本组成
+
+📎 [[https://xiaolincoding.com/os/6_file_system/file_system.html#%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F%E7%9A%84%E5%9F%BA%E6%9C%AC%E7%BB%84%E6%88%90][小林coding]]
+
+*** 索引节点和目录项
+文件 关联的2个数据结构：[[id:6e6aae7c-ce87-40dc-ac53-1c0ff61e6f4e][🖼 索引节点、目录项、文件数据]]
 *dentry和inode关系*
 1. 创建文件时：内核在磁盘上分配一个磁盘inode，并给它分配唯一inode号；内核在内存中创建dentry，存储文件名和inode号的映射关系
 2. 读取文件时：内核通过dentry找到其对应的inode号，将磁盘inode加载到内存，生成内存inode
@@ -31,7 +35,7 @@
 - inode(索引节点) ::
   1. 是 *文件的唯一标识* ，存储在 *磁盘、内存* 中
   2. 记录文件的元信息： *数据在磁盘的位置* 、inode编号、文件大小、访问权限、创建时间、修改时间
-  3. [[id:2e96384b-e49b-45b1-a51a-8cbc252c7d4a][stat]] 查看 inode
+  3. stat 查看 inode
 
 - fd(文件描述符)  :: 进程打开文件后，内核为进程分配的临时整数索引
 #+name: inode和fd的区别？
@@ -40,22 +44,24 @@
 - fd用于说明进程可以怎么操作文件（eg：不同进程对同一个文件的访问权限不同：可读可写，文件读到哪了等）
 #+end_comment
 
-** 磁盘的3个存储区域
+
+*** 磁盘的3个存储区域
 - 超级块     :: 存储 文件系统详细信息：块个数、块大小、空闲块等； *文件系统挂载时进入内存*
 - 索引节点区 :: 存储 索引节点； *文件访问时进入内存*
 - 数据块区   :: 存储 文件或目录数据
   + 数据块（4KB） :: 也称 *逻辑块* ，由8个扇区组成；是文件系统读写的基本单位
   + 扇区（512B）  :: 磁盘读写最小单位
 
-** 图:索引节点、目录项、文件数据 :ATTACH:
+
+*** 🖼 索引节点、目录项、文件数据 :ATTACH:
 :PROPERTIES:
 :ID:       6e6aae7c-ce87-40dc-ac53-1c0ff61e6f4e
 :END:
 [[attachment:_20250831_205007screenshot.png]]
 
 
-* 虚拟文件系统(VFS)
-用于为用户 *提供统一的文件系统访问接口* ，见：[[id:55c4bfc0-b968-4e74-bead-420599fcbe8d][图:虚拟文件系统]]
+** 虚拟文件系统(VFS)
+用于为用户 *提供统一的文件系统访问接口* ，见：[[id:55c4bfc0-b968-4e74-bead-420599fcbe8d][🖼 虚拟文件系统]]
 #+begin_comment
 文件系统多样，原理和使用方式也多样；引入VFS，程序员只需要了解VFS提供的统一接口就行
 #+end_comment
@@ -66,14 +72,15 @@
 2. 内存的文件系统：数据存在 内存 中，eg：/proc、/sys，读写这类文件其实是读写内核中相关数据
 3. 网络的文件系统：用于访问其他计算机主机数据的文件系统，eg：NFS、SMB
 
-** 图:虚拟文件系统 :ATTACH:
+
+*** 🖼 虚拟文件系统 :ATTACH:
 :PROPERTIES:
 :ID:       55c4bfc0-b968-4e74-bead-420599fcbe8d
 :END:
 [[attachment:_20251105_162948screenshot.png]]
 
 
-* 软链接、硬链接
+** 软链接、硬链接
 *[[id:df162b8c-110a-4d17-ac3f-f0274e0cd113][硬链接]]*
 1. 多个dentry中的inode指针指向同一个inode
    只有删除文件的所有硬链接和源文件时，系统才会删除该文件
@@ -86,17 +93,20 @@
 2. 可跨文件系统
 3. 可链接目录
 
-** 图:硬链接 :ATTACH:
+
+*** 🖼 硬链接 :ATTACH:
 :PROPERTIES:
 :ID:       df162b8c-110a-4d17-ac3f-f0274e0cd113
 :END:
 [[attachment:_20251105_164335screenshot.png]]
 
-** 图:软链接 :ATTACH:
+
+*** 🖼 软链接 :ATTACH:
 :PROPERTIES:
 :ID:       76c74ce5-c50b-4f27-989f-52edcfda9207
 :END:
 [[attachment:_20251105_164342screenshot.png]]
+
 
 * tmp
 ** 文件的使用

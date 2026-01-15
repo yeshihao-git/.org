@@ -1,25 +1,785 @@
 :PROPERTIES:
 :ID:       a3778673-5028-4637-b8f2-85b1bf798587
 :END:
-#+title: 面向对象(封装、继承、多态)
+#+title: 面向对象三大特性
 #+filetags: cpp
 
-* 封装、继承、多态
-面向对象三大特性：
+* 面向对象三大特性
+- 面向对象三大特性 ::
+  1. [[id:0738d211-b694-4401-b3d8-ce700fa52f25][封装]]
+  2. [[id:4dd617ab-639b-4748-a543-7a65ddf02913][继承]]
+  3. [[id:1f4d0779-e20a-431e-b16a-a799e7f7b1ac][多态]]
 
-封装：
-将数据和方法绑定在一起；隐藏类内部实现细节，只暴露必要的接口
+** 封装
+:PROPERTIES:
+:ID:       0738d211-b694-4401-b3d8-ce700fa52f25
+:END:
+- 封装 :: 将数据和方法绑定在一起；隐藏类内部实现细节，只暴露必要的接口
 
-[[id:7b0c3ac7-1b45-4b02-97a9-bdad067c03e9][继承]]：
-1. 派生类继承基类的数据和方法，实现代码复用，同时在此基础上能进行扩展
-2. is-a 的关系 -> 意味着 可以使用基类指针/引用作为函数参数，这样就能传入任何派生类对象，更加灵活
 
-多态：
-一个接口（使用者看到的功能入口），多种实现；分为编译时多态、运行时多态
-- 编译时多态 :: 编译时解析接口，并绑定到具体实现 -> [[id:8c55eec4-57bb-45c2-8890-c65d7c473a24][函数重载]]、模板
-- 运行时多态 :: 运行时解析接口，并绑定到具体实现 -> [[id:b23cd926-82ec-489e-ad8f-96b86e5559c2][虚函数]]、继承
- #+begin_example
- 函数重载：函数名（接口）根据函参确定（解析、绑定）匹配的函数（实现）
- 模板    ：模板（接口）根据传入参数确定（解析、绑定）实例化函数/类（实现）
- 虚函数  ：函数名（接口）根据虚函数表确定（解析、绑定）最终调用函数（实现）
- #+end_example
+** 继承
+:PROPERTIES:
+:ID:       4dd617ab-639b-4748-a543-7a65ddf02913
+:END:
+- 继承 :: 派生类继承基类的数据和方法，实现 *代码复用* ，同时在此基础上能进行 *扩展*
+  1. =is-a= 的关系（可使用基类指针/引用作为函数参数，这样就能传入继承体系中的任何对象，更灵活），组合是 =has-a= 的关系
+  2. 派生类 *构造顺序* ：基类 -> 派生类（销毁相反） [fn:1]
+  3. *继承权限* + 基类访问限定符 = 基类成员访问限定符
+     |--------------------+-------------------+-----------------+-------------------|
+     | 基类中的访问限定符 | public继承        | private继承     | protected继承     |
+     |--------------------+-------------------+-----------------+-------------------|
+     | Public（公有）     | Public（公有）    | Private（私有） | Protected（保护） |
+     | Protected（保护）  | Protected（保护） | Private（私有） | Protected（保护） |
+     | Private（私有）    | 不可访问          | 不可访问        | 不可访问          |
+     |--------------------+-------------------+-----------------+-------------------|
+  4. [[id:43588f09-c7d7-4c7a-9e13-026c2dda6441][using声明]] 可以 [fn:2]
+     1) 更改 继承成员的访问权限
+     2) 将父类的函数加入派生类进行 [[id:a545a441-471f-45d4-8a7b-30767486357a][函数重载]]
+  5. 在派生类 *添加新功能* ：继承 [fn:3]
+     #+name: why
+     #+begin_comment
+     使用第三方的代码库，想扩充功能，无法直接在代码库中写功能，且后边第三方更新了代码库，可能出问题 -> 通过继承的方式添加功能
+     #+end_comment
+  6. 派生类 *访问基类函数*
+     1) 访问基类同名函数：加基类作用域限定符 =<基类>::<基类同名函数>= [fn:4]
+     2) 访问基类友元函数：使用 =static_cast= 转为基类后调用 [fn:5]（友元函数不是基类成员，因此不能使用 基类作用域限定符）
+  7. 派生类 *重定义成员函数* ，通过派生类调用的是派生类版本 [fn:6]
+  8. 注意 [[id:89b97115-840f-4c51-bbd3-957c58678145][对象切片]] 问题
+  9. 解决 *菱形继承* 问题：[[id:476d4abd-3c49-4cc4-bf1a-7e05a140485a][虚基类]]
+
+
+*** 对象切片
+:PROPERTIES:
+:ID:       89b97115-840f-4c51-bbd3-957c58678145
+:END:
+- 对象切片 :: 将派生类对象赋值给基类对象，派生类对象的基类部分被复制，派生类部分不会。发生场景：
+  1. 赋值 [fn:7]           --解决--> 引用
+  2. 函数参数值传递 [fn:8] --解决--> 引用
+  3. std::vector [fn:9]    --解决--> 指针、引用
+
+
+*** 虚基类
+:PROPERTIES:
+:ID:       476d4abd-3c49-4cc4-bf1a-7e05a140485a
+:END:
+- 菱形继承 :: B、C 继承 A，D 继承 B、C，导致 D 中包含 A 中的多份成员变量副本，引发成员变量 *访问二义性* 、 *内存浪费* 问题 -> 使用虚基类后，最派生类D 中 最基类A 成员变量只有1份，问题解决
+
+- 虚基类 :: 派生类通过 =virtual= 修饰的继承 继承基类，该基类为虚基类，用于解决 “菱形继承” 问题 [fn:10]
+  1. 最基类的创建由最派生类负责 [fn:11]
+  2. 最派生类的构造函数中 *虚基类在非虚基类之前创建* [fn:11]
+  3. [[id:843fce83-7f40-43cc-a5e4-0df9b75b8ba7][虚基类底层]]
+
+
+**** 虚基类底层
+:PROPERTIES:
+:ID:       843fce83-7f40-43cc-a5e4-0df9b75b8ba7
+:END:
+*底层* ：每个虚继承类中有 =vbptr= （虚基类指针），指向 虚基类表，虚基类表中记录 Base的偏移量，通过偏移量定位到 Base
+#+begin_src cpp
+class Base {
+public:
+  int data {12};
+};
+
+class A: virtual public Base { }; // 虚继承
+class B: virtual public Base { };
+
+class Derived: public A, public B { };
+/*
+Derived对象内存结构：
+[ A::vbptr ]        -> 指向A的虚基类表（记录Base的偏移量）
+[ A的成员变量 ]
+[ B::vbptr ]        -> 指向B的虚基类表
+[ B的成员变量 ]
+[ 唯一Base子对象 ]  -> 被A和B共享
+,*/
+#+end_src
+*访问流程* ：
+1. 通过 A/B::vbptr 找到虚基类表，获得 Base 的偏移量 offset
+2. 访问 Derived对象地址 + offset 定位到 Base::data
+
+
+** 多态
+:PROPERTIES:
+:ID:       1f4d0779-e20a-431e-b16a-a799e7f7b1ac
+:END:
+- 多态 :: 一个接口（使用者看到的功能入口），多种实现；分为编译时多态、运行时多态
+  + 编译时多态 :: 编译时解析接口，并绑定到具体实现 -> [[id:a545a441-471f-45d4-8a7b-30767486357a][函数重载]]、模板
+  + 运行时多态 :: 运行时解析接口，并绑定到具体实现 -> [[id:37d4f6e6-c9bd-4bcf-8f15-3cb6ef7a14f7][虚函数]]
+#+begin_comment
+函数重载：函数名（接口）根据函参确定（解析、绑定）匹配的函数（实现）
+模板    ：模板（接口）根据传入参数确定（解析、绑定）实例化函数/类（实现）
+虚函数  ：函数名（接口）根据虚函数表确定（解析、绑定）最终调用函数（实现）
+#+end_comment
+
+
+*** 虚函数
+:PROPERTIES:
+:ID:       37d4f6e6-c9bd-4bcf-8f15-3cb6ef7a14f7
+:END:
+- 虚函数 :: =virtual= 声明的成员函数，允许派生类 *重写* 其实现，实现 [[id:a3778673-5028-4637-b8f2-85b1bf798587][运行时多态]]，具体来说：通过基类的 *指针或引用* 调用虚函数时会调用 基类指针或引用 指向或引用的类对象的虚函数版本 [fn:12]
+  1. 一个函数是 =virtual= ，则 *派生类中重写的函数都是 =virtual= 函数* （即使没有显式标记）
+  2. *基类 [[id:be44b0c2-d234-409f-b1a6-b447e365db37][析构函数]] 应设置为 =virtual= 的* ，防止 [[id:6782179f-792b-4eb6-807c-4f95aba88169][内存泄漏]] [fn:13]
+  3. 使用场景：作为 *函数参数* 使用 [fn:14]
+  4. 使用 [[id:5da43f35-39b6-4d7e-9d04-3221a6a092e7][std::dynamic_cast]] 进行向下转型
+
+
+**** 虚函数实现
+有虚函数的类（ =virtual= ）有 虚函数表、虚函数指针（ =*__vptr= ），其派生类也有自己的虚函数表；
+在类对象初始化的时候，虚函数指针 指向对应的虚函数表（eg：派生类创建时，虚函数表指针指向派生类的虚函数表，表内会用掉重写版本的函数指针替换被重写的）；
+调用虚函数时，根据类指针 -> 找到 =*__vptr=  -> 再找到对应的 虚函数表 -> 调用可调用的函数版本。
+（ *性能* ：虚函数 比 非虚函数 *调用慢* 、 *体积大* ）
+- 虚函数表 :: 一个数组，里面存放函数指针（派生类有重写存放重写版本，否则存放基类版本），指向该类可以调用的函数版本。 *编译时生成* -> 有虚函数的类及其派生类各自都有
+- 虚函数指针 :: 指向虚函数表。 *运行时创建对象时确定* ->  创建类对象时，在基类添加，然后指向该类（基类或派生类）的虚表
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+class Base {
+public:
+    // VirtualTable* __vptr; 编译器自动添加 虚函数指针
+    virtual void function1() {};
+    virtual void function2() {};};
+
+// D1、D2 是派生类，会继承 虚函数指针
+class D1: public Base {
+public:
+    void function1() override {};};
+
+class D2: public Base {
+public:
+    void function2() override {};};
+
+int main() {
+  D1 d1 {};           // D1创建，*__vptr 指向 D1虚表
+  Base* dPtr = &d1;   // Base指针 指向 D1的基类部分，又 *__vptr 指向 D1虚表，因此可以访问 D1的虚函数表
+  dPtr->function1();  // 程序识别出这是虚函数，通过 虚函数表 解析出 D1::function1()
+  Base b {};          // Base创建，*__vptr 指向 Base虚表
+  Base* bPtr = &b;
+  bPtr->function1();  // 调用 Base::function1
+}
+#+end_src
+
+
+**** 📖 面试题
+***** 构造函数/析构函数 中能否调用 虚函数？
+可以，但不建议，因为可能没法触发多态，无法达到我们的目的
+- 构造派生类，先构造基类，基类构造函数中调用虚函数，希望触发派生类版本，但派生类还没构造，只能触发基类版本
+- 析构派生类，先析构派生类，后析构基类，基类中调用虚函数，希望触发派生类版本，但派生类已经析构了，只能触发基类版本
+
+
+**** override
+:PROPERTIES:
+:ID:       31b2e0ac-529e-482b-b728-2996e0591fe5
+:END:
+声明重写这个函数，编译器会检查
+1. *重写规则* ：派生类的 *函数签名、返回类型* 与 基类相同 [fn:15]
+2. *协变返回类型* ：基类虚函数 返回类的指针/引用，重写函数返回指向派生类的指针/引用 -> *视为重写（即使重写函数返回类型不同）*[fn:16]
+
+
+**** final
+:PROPERTIES:
+:ID:       ce6707f0-21ee-474d-b89d-f411214e7f1f
+:END:
+1. 禁止重写虚函数：在函数后使用 [fn:17]
+2. 禁止继承      ：在类名后使用 [fn:18]
+
+
+**** 纯虚函数
+:PROPERTIES:
+:ID:       0cad2baa-3615-47c4-b059-b227d58b109c
+:END:
+- 纯虚函数 :: =virtual= 声明的函数，末尾添加 ==0= 标记，用于定义 *接口规范*  ，强制派生类实现所有纯虚函数（也就是让这个类实现我们想要的功能）
+
+
+***** 抽象类
+:PROPERTIES:
+:ID:       b5b6f1f5-69a7-41dc-b27d-8c55cae67146
+:END:
+- 抽象类 :: 未实现基类的所有纯虚函数的派生类
+  1. 抽象类无法实例化（表示是没实现要求的接口规范，没法用）
+  2. 抽象类有 [[id:b23cd926-82ec-489e-ad8f-96b86e5559c2][虚函数]]表
+
+
+***** 接口类
+:PROPERTIES:
+:ID:       c93a8d2f-664b-4f8a-93b3-162561e42f16
+:END:
+- 接口类 :: 仅包含纯虚函数的类，用于定义一套接口规范， *解耦* 接口和实现（分别对应 做什么、怎么做）
+  1. 没有成员变量，所有函数都是纯虚函数，接口类的派生类需要实现所有纯虚函数
+  2. 使用场景：函数参数 [fn:19]
+
+
+
+* Footnotes
+
+[fn:1]
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+class A {
+public:
+    A(int a) { std::cout << "A: " << a << '\n'; }
+};
+
+class B: public A {
+public:
+    B(int a, double b) : A{ a } { std::cout << "B: " << b << '\n'; }
+};
+
+class C: public B {
+public:
+    C(int a, double b, char c) : B{ a, b } { std::cout << "C: " << c << '\n'; }
+};
+
+int main() {
+    C c{ 5, 4.3, 'R' }; // NOTE 构造顺序：A -> B -> C
+}                       // NOTE 销毁顺序：C -> B -> A
+#+end_src
+
+#+RESULTS:
+: A: 5
+: B: 4.3
+: C: R
+
+[fn:2]
+#+name: 更改继承成员的访问权限
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+class Base {
+public:
+    int m_value{};
+    int getValue() const { return m_value; }
+    int getValue(int) const { return m_value; }
+};
+
+class Derived : public Base {
+private:
+  using Base::getValue;             // NOTE 改变 getValue函数的访问权限为 private
+
+public:
+  Derived(int value) : Base { value } { }
+};
+
+int main() {
+  Derived derived{ 7 };
+  std::cout << derived.getValue();  // FIXME getValue() 在 Derived private
+  std::cout << derived.getValue(5); // FIXME getValue(int) 在 Derived 是 private
+}
+#+end_src
+
+#+name: 将父类函数加入派生类进行函数重载
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+class Base {
+public:
+    void print(int)    { std::cout << "Base::print(int)\n"; }
+    void print(double) { std::cout << "Base::print(double)\n"; }
+};
+
+class Derived: public Base {
+public:
+    using Base::print; // NOTE 将基类的print加入派生类作用域，使其可以参与 函数重载解析
+    void print(double) { std::cout << "Derived::print(double)"; }
+};
+
+int main() {
+    Derived d{};
+    // 参数是int，我们希望调用 Base::print(int)，若没有使用using，则会调用 Derived::print(double)
+    d.print(5); // 调用Base::print(int)
+}
+#+end_src
+
+#+RESULTS:
+: Base::print(int)
+
+[fn:3]
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+class Base {
+protected:
+    int m_value {};
+
+public:
+    Base(int value) : m_value { value } { }
+
+    void identify() const { std::cout << "I am a Base\n"; }
+};
+
+class Derived: public Base {
+public:
+    Derived(int value) : Base { value } { }
+
+    // NOTE 在派生类扩展功能：访问基类成员
+    int getValue() const { return m_value; }
+};
+
+int main() {
+    Derived derived { 5 };
+    std::cout << "derived has value " << derived.getValue() << '\n';
+}
+#+end_src
+
+#+RESULTS:
+: derived has value 5
+
+[fn:4]
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+class Base {
+public:
+    Base() { }
+
+    void identify() const { std::cout << "Base::identify()\n"; }
+};
+
+class Derived: public Base {
+public:
+    Derived() { }
+
+    void identify() const {
+        std::cout << "Derived::identify()\n";
+        Base::identify(); // NOTE 使用 基类作用域限定符，调用 Base::identify()
+        // identify(); 这样调用 FIXME 会无线递归
+    }
+};
+
+int main() {
+    Derived derived {};
+    derived.identify();
+}
+#+end_src
+
+#+RESULTS:
+: Derived::identify()
+: Base::identify()
+
+[fn:5]
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+class Base {
+public:
+  Base() { }
+
+  friend std::ostream& operator<< (std::ostream& out, const Base&) {
+    out << "In Base\n";
+    return out;
+  }
+};
+
+class Derived: public Base {
+public:
+  Derived() { }
+
+  friend std::ostream& operator<< (std::ostream& out, const Derived& d) {
+    out << "In Derived\n";
+    // NOTE static_cast 将派生类 转为 基类，调用 基类友元函数 operator<<
+    out << static_cast<const Base&>(d);
+    return out;
+  }
+};
+
+int main() {
+    Derived derived {};
+
+    std::cout << derived << '\n';
+}
+#+end_src
+
+#+RESULTS:
+: In Derived
+: In Base
+:
+
+[fn:6]
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+class Base {
+public:
+    Base() { }
+
+    void identify() const { std::cout << "Base::identify()\n"; }
+    void name() { cout << "Base\n"; }
+};
+
+class Derived: public Base {
+public:
+    Derived() { }
+    void name() { cout << "Derived\n"; }
+};
+
+int main() {
+    Derived derived {};
+    derived.identify();      // NOTE 调用基类版本（派生类中找不到，去基类中查找）
+    derived.name();          // NOTE 调用派生类版本（重新定义基类函数）
+}
+#+end_src
+
+#+RESULTS:
+: Base::identify()
+: Derived
+
+[fn:7]
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+/* 常见情况 */
+Derived derived{ 5 };
+Base base{ derived }; // 赋值导致对象切片
+
+/* 一个不明显的例子 */
+Derived d1{ 5 };
+Derived d2{ 6 };
+Base& b{ d2 }; // 基类引用b 指向 派生类d2的基类部分
+b = d1;        // 对象切片：d1 的 Base部分 复制到 d2
+               // 现在 d2 有 d1基类部分、d2派生类部分
+#+end_src
+
+[fn:8]
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+// void printName(const Base base)   FIXME 值传递 类对象 -> 发生对象切片
+void printName(const Base& base) { // NOTE 引用传递 类对象
+    std::cout << "I am a " << base.getName() << '\n';
+}
+
+int main() {
+    Derived d{ 5 };
+    printName(d);
+}
+#+end_src
+
+[fn:9]
+#+name:  值传递
+#+begin_src cpp :results output :namespaces std :includes <iostream> <vector>
+int main() {
+  std::vector<Base> v{};     // 值传递形式，添加对象到容器 -> 发生 对象切片
+  v.push_back(Base{ 5 });    // 添加基类对象
+  v.push_back(Derived{ 6 }); // 添加派生类对象
+
+  for (const auto& element : v)
+    std::cout << "I am a " << element.getName() << " with value " << element.getValue() << '\n';
+  // 输出：
+  // I am a Base with value 5
+  // I am a Base with value 6
+}
+#+end_src
+
+#+name: 指针
+#+begin_src cpp :results output :namespaces std :includes <iostream> <vector>
+int main()
+{
+  std::vector<Base*> v{}; // ok：指针的方式 添加对象到容器
+
+  Base b{ 5 };
+  Derived d{ 6 };
+
+  v.push_back(&b);
+  v.push_back(&d);
+
+  for (const auto* element : v)
+    std::cout << "I am a " << element->getName() << " with value " << element->getValue() << '\n';
+}
+#+end_src
+
+#+name: 引用（std::reference_wrapper）
+#+begin_src cpp :results output :namespaces std :includes <iostream> <vector> <string_view> <functional>
+class Base {
+protected:
+    int m_value{};
+
+public:
+    Base(int value) : m_value{ value } { }
+    virtual ~Base() = default;
+
+    virtual std::string_view getName() const { return "Base"; }
+    int getValue() const { return m_value; }
+};
+
+class Derived : public Base {
+public:
+    Derived(int value) : Base{ value } { }
+
+    std::string_view getName() const override { return "Derived"; }
+};
+
+int main() {
+  std::vector<std::reference_wrapper<Base>> v{}; // std::reference_wrapper 模拟可重新赋值引用的类
+
+  Base b{ 5 };
+  Derived d{ 6 };
+
+  v.push_back(b);
+  v.push_back(d);
+
+  for (const auto& element : v)
+    std::cout << "I am a " << element.get().getName() << " with value " << element.get().getValue() << '\n';
+}
+#+end_src
+
+#+RESULTS: 引用（std::reference_wrapper）
+: I am a Base with value 5
+: I am a Derived with value 6
+
+
+[fn:10]
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+class PoweredDevice {
+public:
+    PoweredDevice(int power) {
+      std::cout << "PoweredDevice: " << power << '\n';
+    }
+};
+
+class Scanner: public PoweredDevice {
+public:
+    Scanner(int scanner, int power)
+        : PoweredDevice{ power } {
+      std::cout << "Scanner: " << scanner << '\n';
+    }
+};
+
+class Printer: public PoweredDevice {
+public:
+    Printer(int printer, int power)
+        : PoweredDevice{ power } {
+      std::cout << "Printer: " << printer << '\n';
+    }
+};
+
+class Copier: public Scanner, public Printer {
+public:
+    Copier(int scanner, int printer, int power)
+        : Scanner{ scanner, power }, Printer{ printer, power } { }
+};
+
+int main() {
+    Copier copier{ 1, 2, 3 }; // Printer、Scanner都调用了 PoweredDevice构造函数，因此他俩都有 PoweredDevice的成员变量；Copier中就有两份 PoweredDevice的成员变量 -> 问题：Copier类对象体积大，访问 PoweredDevice 中的成员变量会出现模棱两可的问题
+}
+#+end_src
+
+#+RESULTS:
+: PoweredDevice: 3
+: Scanner: 1
+: PoweredDevice: 3
+: Printer: 2
+
+[fn:11]
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+// PoweredDevice 虚基类
+class PoweredDevice {
+public:
+    PoweredDevice(int power) {
+      std::cout << "PoweredDevice: " << power << '\n';
+    }
+};
+
+class Scanner: virtual public PoweredDevice {
+public:
+    Scanner(int scanner, int power)
+        : PoweredDevice{ power } {
+      std::cout << "Scanner: " << scanner << '\n';
+    }
+};
+
+class Printer: virtual public PoweredDevice {
+public:
+    Printer(int printer, int power)
+        : PoweredDevice{ power } {
+      std::cout << "Printer: " << printer << '\n';
+    }
+};
+
+class Copier: public Scanner, public Printer {
+public:
+    Copier(int scanner, int printer, int power)
+        // NOTE 最派生类 负责构造 最基类 PoweredDevice
+        : PoweredDevice{ power }, Scanner{ scanner, power }, Printer{ printer, power } { }
+        // NOTE 创建顺序：PoweredDevice -> Scanner -> Printer -> Copier。Scanner、Printer 仍然会调用 PoweredDevice构造函数，但是会被忽略
+};
+
+int main() {
+    Copier copier{ 1, 2, 3 };
+}
+#+end_src
+
+#+RESULTS:
+: PoweredDevice: 3
+: Scanner: 1
+: Printer: 2
+
+
+[fn:12]
+#+name: 基类指针/引用调用函数的不同版本
+#+begin_src cpp :results output :namespaces std :includes <iostream> <string_view>
+class A {
+public:
+  virtual std::string_view getName() const { return "A"; }};
+
+class B: public A {
+public:
+  std::string_view getName() const { return "B"; }};
+
+class C: public B {
+public:
+  std::string_view getName() const { return "C"; }};
+
+int main() {
+    C c {};
+    // 通过基类 指针或引用调用 虚函数时，调用的是对象的实际类型的最派生版本
+    A& rBase{ c };
+    std::cout << "rBase is a " << rBase.getName() << '\n';
+    A* pBase{ &c };
+    std::cout << "pBase is a " << pBase->getName() << '\n';
+    // 通过基类 直接调用 虚函数，调用的是对象的相同类型的版本
+    A a { c };
+    std::cout << " Base is a " << a.getName();
+}
+#+end_src
+
+[fn:13]
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+class Base {
+public:
+    virtual ~Base() { // NOTE 基类析构函数 应该设置为 virtual，否则 delete Base类型的指针时，派生类析构函数不会调用
+        std::cout << "Calling ~Base()\n";
+    }
+};
+
+class Derived: public Base {
+private:
+    int* m_array {};
+public:
+    Derived(int length)
+      : m_array{ new int[length] } { }
+
+    ~Derived() { // 基类是 virtual，此处隐式的为 virtual
+        std::cout << "Calling ~Derived()\n";
+        delete[] m_array;
+    }
+};
+
+int main() {
+    Derived* derived { new Derived(5) };
+    Base* base { derived };
+
+    delete base;
+}
+#+end_src
+
+#+RESULTS:
+: Calling ~Derived()
+: Calling ~Base()
+
+[fn:14]
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+class Animal {}
+class Cat : public Animal {}
+class Dog : public Animal {}
+// NOTE 参数使用 指向基类的引用/指针，可以传入派生类
+void report(const Animal& rAnimal) { }
+#+end_src
+
+[fn:15]
+#+begin_src cpp :results output :namespaces std :includes <iostream> <string_view>
+class A {
+public:
+  virtual int getValue() const { return 5; }
+  virtual std::string_view getName1(int x) { return "A"; }
+  virtual std::string_view getName2(int x) { return "A"; }
+  virtual std::string_view getName3(int x) { return "A"; }};
+
+class B : public A {
+public:
+  // virtual double getValue() const { return 6.78; }};               // NOTE 没有重写：返回类型不同
+  // std::string_view getName1(short int x) override { return "B"; }  // FIXME 重写失败：函参不同
+  // std::string_view getName2(int x) const override { return "B"; }  // FIXME 重写失败：const
+  std::string_view getName3(int x) override { return "B"; }           // ok
+};
+
+int main() {
+  B b{};
+  A* pb {&b};
+  A& rb {b};
+  cout << "pb is " << pb->getName3(2) << endl;
+  cout << "rb is " << rb.getName3(2) << endl;
+}
+#+end_src
+
+#+RESULTS:
+: pb is B
+: rb is B
+
+[fn:16]
+#+begin_src cpp :results output :namespaces std :includes <iostream> <string_view>
+class Base {
+public:
+	// 返回类的指针/引用：Base*
+	virtual Base* getThis() { std::cout << "called Base::getThis()\n"; return this; }
+	void printType() { std::cout << "returned a Base\n"; }
+};
+
+class Derived : public Base {
+public:
+  // 返回派生类的指针/引用：Derived*
+	Derived* getThis() override { std::cout << "called Derived::getThis()\n";  return this; }
+	void printType() { std::cout << "returned a Derived\n"; }
+};
+
+int main() {
+	Derived d{};
+	Base* b{ &d };
+	d.getThis()->printType();
+	b->getThis()->printType();
+}
+#+end_src
+
+#+RESULTS:
+: called Derived::getThis()
+: returned a Derived
+: called Derived::getThis()
+: returned a Base
+
+[fn:17]
+#+begin_src cpp :results output :namespaces std :includes <iostream> <string_view>
+class A {
+public:
+  virtual std::string_view getName() const { return "A"; }
+};
+
+class B : public A {
+public:
+  // NOTE 使用 final
+  std::string_view getName() const override final { return "B"; } // okay, 重写 A::getName()
+};
+
+class C : public B {
+public:
+  std::string_view getName() const override { return "C"; }       // FIXME 不能重写 getName()，因为是 final
+};
+#+end_src
+
+[fn:18]
+#+begin_src cpp :results output :namespaces std :includes <iostream> <string_view>
+class A {
+public:
+  virtual std::string_view getName() const { return "A"; }};
+
+// NOTE 使用 final，防止 B 被继承
+class B final : public A {
+public:
+  std::string_view getName() const override { return "B"; }};
+
+// FIXME：不能继承 final 类
+class C : public B {
+public:
+  std::string_view getName() const override { return "C"; }};
+#+end_src
+
+[fn:19]
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+// 接口（稳定）
+class DataStorage {
+public:
+    virtual void save(const std::string& data) = 0;         // 纯虚函数
+    virtual std::string load() = 0;
+    virtual ~DataStorage() = default;                       // NOTE 注意点1：必须是虚析构，否则没法调用派生类析构
+};
+
+// 实现1：MySQL存储
+class MySQLStorage : public DataStorage { /* 具体实现 */ }; // NOTE 注意点3：派生类必须实现所有纯虚函数
+
+// 实现2：Redis存储
+class RedisStorage : public DataStorage { /* 具体实现 */ };
+
+// NOTE 调用者只需依赖接口，与具体实现解耦，后续可以传入具体实现
+void processData(DataStorage& storage) {                    // NOTE 注意点2：使用指针或引用，否则对象切片
+    storage.save("hello"); // 无需知道是MySQL还是Redis
+}
+#+end_src

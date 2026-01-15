@@ -1,8 +1,0 @@
-:PROPERTIES:
-:ID:       08dc4a68-2a75-42e0-9321-4908207481ad
-:END:
-#+title: ping
-#+filetags: linux
-
-* ping
-用于测试网络连通性，底层是 ICMP协议（网络层的协议），使用方法为 =ping <IP/域名>=

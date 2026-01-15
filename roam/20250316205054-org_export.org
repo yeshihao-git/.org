@@ -1,10 +1,47 @@
 :PROPERTIES:
 :ID:       d9ec78e3-9bc9-42e0-ad04-eebc8f0efd01
 :END:
-#+title: org-export
-#+filetags: org
+#+title: org-pandoc
+#+filetags: org-mode
 
-* org-export
-1. [[id:2d50336c-dabb-4c57-8cb5-b7853cabd245][org]] 内置的导出引擎，用于将 org文件 导出为多种格式
-2. 设置导出目录，见 [[id:ef458bab-4387-4ddd-9a1a-342809f1c220][org设置导出目录]]
-3. 导出思维导图，见 [[id:4198a187-5a0f-4fa3-bae4-c914e22e0b3c][org导出思维导图]]
+* org-pandoc
+- org-pandoc :: org-export的扩展增强导出插件，基于 org-export 实现
+- org-export :: org 内置的导出引擎，用于将 org文件 导出为多种格式
+
+** 快速开始
+|---------------------------------+--------------------|
+| 函数                            | 作用               |
+|---------------------------------+--------------------|
+| org-pandoc-export-to-<文件类型> | 导出<文件类型>文件 |
+| org-pandoc-export-as-<文件类型> | 预览<文件类型>文件 |
+|---------------------------------+--------------------|
+
+** org设置导出目录
+:PROPERTIES:
+:ID:       b9bce575-d3f9-433c-96a2-d94274e3e42c
+:END:
+#+begin_example bash
+# -------DoomEmacs使用手册.org---------#
+1 ...
+2 #+EXPORT_FILE_NAME: ~/.org/export/DoomEmacs使用手册
+3 ...
+# -------DoomEmacs使用手册.org---------#
+#+end_example
+
+#+name: 发现过程
+#+begin_comment
+导出函数 org-pandoc-export-to-markdown_mmd 中发现用 org-export-output-file-name 导出，而该函数又与 EXPORT_FILE_NAME属性 有关
+#+end_comment
+
+** org导出思维导图
+:PROPERTIES:
+:ID:       1c7efd17-72fd-49f0-ba15-c30e6187d635
+:END:
+1. =M-x org-freemind-export-to-freemind= -> 生成.mm文件
+2. 用 freeplane 打开 .mm文件
+
+** org导出markdown
+:PROPERTIES:
+:ID:       3f7abc5e-5466-4bd2-9eef-a90755fd07b7
+:END:
+1. =M-x org-pandoc-export-to-markdown_mmd= （markdown推荐）

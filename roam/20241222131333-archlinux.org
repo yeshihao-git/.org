@@ -1,11 +1,14 @@
 :PROPERTIES:
 :ID:       29a2fc5a-1db6-4a13-a5cd-397e587c21ec
 :END:
-#+title: arch
+#+title: arch linux
 #+filetags: linux
 
-* arch
-[[id:ec7aef91-2628-4ba9-b300-16652314877f][linux]]的一个发行版；使用 systemd 作为默认的 init系统 与 服务管理器；pacman 作为默认的包管理器
+* arch linux
+- arch linux :: [[id:ec7aef91-2628-4ba9-b300-16652314877f][linux]]的一个发行版
+  1. [[id:37810e04-b5c7-4d84-bcc3-e77239b9c877][systemd]] 作为默认的 init系统 与 服务管理器
+  2. [[id:fe221daa-775a-4b53-a00f-1700a6698e9f][pacman]] 作为默认的包管理器
+
 
 ** arch linux安装向日葵
 :PROPERTIES:
@@ -17,6 +20,7 @@ sudo systemctl start runsunloginclient.service
 sudo systemctl enable runsunloginclient.service
 #+end_src
 
+
 ** arch linux终端musicfox播放音乐时无法使用耳机播放 [[https://github.com/go-musicfox/go-musicfox/issues/348][参考]]
 :PROPERTIES:
 :ID:       e96c5fd0-b5fd-49c5-b417-d0a2cdf8214d
@@ -24,6 +28,7 @@ sudo systemctl enable runsunloginclient.service
 #+begin_src bash
 pacman -S pipewire-alsa
 #+end_src
+
 
 ** arch设置中文环境 [[https://wiki.archlinuxcn.org/wiki/%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87%E6%9C%AC%E5%9C%B0%E5%8C%96][archwiki]]
 :PROPERTIES:
@@ -42,6 +47,7 @@ pacman -S pipewire-alsa
    #+end_src
 3. reboot
 
+
 ** arch安装linux-zen内核
 :PROPERTIES:
 :ID:       0a676403-2036-4796-aa2b-cf5f423725b8
@@ -54,7 +60,8 @@ reboot
 # 验证内核：uname -r
 #+end_src
 
-** 安装arch linux
+
+** arch linux安装
 :PROPERTIES:
 :ID:       54f0fc20-1210-4a8f-9302-fa20f48e778a
 :END:
@@ -63,6 +70,7 @@ reboot
 3. 然后使用 chroot 切换根目录到主机的硬盘中，就能在主机的硬盘中进行各种操作了
 4. arch linux 不支持 Secure Boot，UEFI 默认启动 Secure Boot，因此我们需要在主板中将其关闭
 5. 关闭 windows 的快速启动和休眠；方法见： [[id:73f9ea05-2107-4089-9d93-49a4afa9b8ae][windows关闭快速启动和休眠]]
+
 
 ** arch linux管理java jdk
 :PROPERTIES:
@@ -80,6 +88,7 @@ sudo archlinux-java set <java-environment> # 设置java的jdk版本
 :ID:       fe221daa-775a-4b53-a00f-1700a6698e9f
 :END:
 arch linux 和 windows上msys2 的默认包管理工具
+
 
 ** 快速开始
 #+name: 改镜像
@@ -103,9 +112,9 @@ pacman -Ql <包> # 列出包中的所有文件（包含头文件、库文件等�
 
 pacman -U <包>  # 用包缓存目录中的包升级降级包（包缓存目录：/var/cache/pacman/pkg）
 #+end_example
-pacman -U /var/cache/pacman/pkg/freetype2-2.13.0-1-x86_64.pkg.tar.zst
 
-** arch linux的wps乱码问题 [[https://bbs.archlinux.org/viewtopic.php?id=288562][参考]]
+
+** arch linux的wps乱码问题
 :PROPERTIES:
 :ID:       6c057be0-010b-4a00-b89c-64939dd99996
 :END:
@@ -113,6 +122,31 @@ pacman -U /var/cache/pacman/pkg/freetype2-2.13.0-1-x86_64.pkg.tar.zst
 #+begin_example
 pacman -U /var/cache/pacman/pkg/freetype2-2.13.0-1-x86_64.pkg.tar.zst
 #+end_example
+
+📎 [[https://bbs.archlinux.org/viewtopic.php?id=288562][参考]]
+
+
+* yay
+- yay :: pacman 和 AUR助手 的前端工具，整合了 官方软件仓库（pacman 功能）和 Arch用户仓库（AUR），支持一键搜索、安装、更新 官方软件包 和 AUR社区软件包
+
+** yay安装
+:PROPERTIES:
+:ID:       2922fdf9-0f26-421d-9ba7-05e3ca37d0ea
+:END:
+1. 挂代理；见 [[id:b2299062-b568-4efd-8288-9ba461a40031][同一局域网一台机器连另一台机器的代理]]
+2. =git clone https://aur.archlinux.org/yay-bin.git=
+3. =cd yay-bin=
+4. =makepkg -si=
+5. 有时候 makepkg -si 因为网络问题没法下载 yay_12.5.0_x86_64.tar.gz 导致失败；此时在 yay-bin文件夹中 =wget https://github.com/Jguer/yay/releases/download/v12.5.0/yay_12.5.0_x86_64.tar.gz= 再执行 =makepkg -si=
+6. 也可以在 *浏览器中手动设置代理* 再去 yay 的 github 上下载 yay_12.5.0_x86_64.tar.gz
+
+
+** yay error：proxyconnect tcp:EOF
+:PROPERTIES:
+:ID:       3da2606e-221e-431e-a48b-328b57d43b77
+:END:
+1. 问题在于yay 底层是通过 [[id:47eb3326-7aac-4300-904e-33f7539709c8][curl]] 访问走代理（proxyconnect）连接 AUR服务器（https://aur.archlinux.org ，可以通过 *curl -v https://aur.archlinux.org* 看详细连接过程） ，而我在终端输入：export https_proxy="https://127.0.0.1:7890" 希望 curl 走HTTPS的代理，  但 clash 是 *HTTP代理软件* ，只能通过 *http://127.0.0.1:7890* 访问
+2. 因此终端设置：export https_proxy="http://127.0.0.1:7890" （ *再次注意* ：这里是 http:// ！）； 参考 [[id:49d53854-7e0a-462b-9397-d54f3a08f559][linux终端走代理]]
 
 
 * systemd
@@ -122,29 +156,16 @@ systemd 是 arch 默认的init进程（PID 1）；配套了一系列的命令行
 3. networkctl：网络管理
 4. loginctl  ：登录管理
 
+
 ** systemctl
 :PROPERTIES:
 :ID:       37810e04-b5c7-4d84-bcc3-e77239b9c877
 :END:
 用于管理系统服务
 
+
 *** 快速开始
-|----------+-------------------------------+--------------------------|
-|          | 命令                          | 功能                     |
-|----------+-------------------------------+--------------------------|
-| 系统管理 | systemctl enable <服务名>     | 设置开机自启             |
-|          | systemctl disable <服务名>    | 取消开机自启             |
-|          | systemctl poweroff            | 关机                     |
-|          | systemctl reboot              | 重启                     |
-|          | systemctl suspend             | 睡眠                     |
-|----------+-------------------------------+--------------------------|
-| 服务管理 | systemctl start <服务名>      | 启动服务                 |
-|          | systemctl stop <服务名>       | 停止服务                 |
-|          | systemctl restart <服务名>    | 重启服务                 |
-|          | systemctl reload <服务名>     | 重新加载配置(不中断服务) |
-|          | systemctl status <服务名>     | 查看服务状态             |
-|          | systemctl cat <服务名>        | 查看服务配置             |
-|          | systemctl is-active <服务名>  | 检查服务是否运行         |
-|          | systemctl is-enabled <服务名> | 检查服务是否开机自启     |
-|          | systemctl is-failed <服务名>  | 检查服务是否启动失败     |
-|----------+-------------------------------+--------------------------|
+#+begin_example bash
+systemctl -h | less
+#+end_example
+

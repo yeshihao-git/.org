@@ -4,46 +4,34 @@
 #+title: static
 #+filetags: cpp
 
-* static [[https://www.learncpp.com/cpp-tutorial/static-local-variables/][learncpp7.11]]
-1. 控制 被修饰对象的 [[id:853a3bee-b823-49fc-acd6-804eecb74822][生命周期、可见范围(作用域、链接性)]]
-   1) static局部变量
-      a. 函数/块内 可见
-      b. 生命周期至程序结束
-      c. 默认初始化为 0
+* static
+- static :: 指定修饰对象的 [[id:853a3bee-b823-49fc-acd6-804eecb74822][存储期、作用域、链接性]]，修饰：
+  1. [[id:41a87682-fcbe-45d8-bb86-cef593a2a123][static局部变量]]
+  2. [[id:78faec0d-efd9-4a84-bd29-6da57353b478][static全局变量]]
+  3. [[id:fcea15d9-fa33-4320-9853-0275ec8319f2][static成员变量]]
+  4. [[id:5461d57d-5ead-4740-a378-822ec6b7d3d7][static函数]]
+  5. [[id:8f33d5f8-50b0-4825-a475-441daf2300f4][static成员函数]]
 
-   2) static全局变量
-      a. 文件内可见（外部链接 -> 内部链接）
-      b. 生命周期至程序结束
-      c. 默认初始化为 0
 
-   3) static函数
-      a. 文件内可见（外部链接 -> 内部链接）
+** static局部变量
+:PROPERTIES:
+:ID:       41a87682-fcbe-45d8-bb86-cef593a2a123
+:END:
+1. 静态存储期，默认初始化为 =0=
 
-   4) static成员变量
-      a. 属于类，类对象之间可见/共享（访问受 public/protected/private 控制）
-      b. 生命周期至程序结束
-      c. 类外定义，默认初始化为 0
-      d. 通过类名调用（无需创建类对象）
 
-   5) static成员函数
-      a. 属于类，没有this指针，只能访问 static成员变量/函数
-      b. 通过类名调用
+** static全局变量
+:PROPERTIES:
+:ID:       78faec0d-efd9-4a84-bd29-6da57353b478
+:END:
+1. 静态存储期，默认初始化为 =0=
+2. 内部链接性
 
-2. *static局部变量 使用场景*
-   1) 生成唯一ID
-      #+begin_src cpp :results output :namespaces std :includes <iostream>
-      int generateID()
-      {
-          static int s_itemID{ 0 };
-          return s_itemID++; // makes copy of s_itemID, increments the real s_itemID, then returns the value in the copy
-      }
-      #+end_src
-   2) 缓存昂贵初始化的数据​​（如配置文件、数据库查询结果）-> 使用 =static const=
-      #+begin_src cpp :results output :namespaces std :includes <iostream>
-      const std::string& loadConfig() {
-          static const std::string config = readFromFile("config.txt"); // 只读取一次
-          return config;
-      }
-      #+end_src
 
-3. *命名规范* ：见 [[id:29f43a49-8123-4541-a02d-02c7ed24a042][命名规范]]
+** static函数
+:PROPERTIES:
+:ID:       5461d57d-5ead-4740-a378-822ec6b7d3d7
+:END:
+1. 内部链接性
+
+

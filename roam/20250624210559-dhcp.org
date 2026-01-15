@@ -4,8 +4,8 @@
 #+title: DHCP
 #+filetags: network
 
-* DHCP(动态主机设置协议)
-应用层协议，基于 [[id:b68205eb-d69e-4fa4-98a5-54532b1a1159][UDP]] 实现；用于 *自动网络配置* （根据 DHCP客户端 的请求，DHCP服务端 返回 *IP地址、网关地址、子网掩码、DNS服务器* 等网络配置参数）
+* DHCP
+- DHCP :: （动态主机设置协议）应用层协议，基于 UDP 实现，用于 *自动网络配置* （根据 DHCP客户端 的请求，DHCP服务端 返回 *IP地址、网关地址、子网掩码、DNS服务器* 等网络配置参数）
 
 *工作流程* ：
 1. DHCP客户端       广播 =DHCP发现报文（DHCP DISCOVER）=

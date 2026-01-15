@@ -2,7 +2,7 @@
 :ID:       9c2a5102-40ec-47c9-ae2f-ea3b8c7b2df9
 :END:
 #+title: 虚拟内存
-#+filetags: operating_system
+#+filetags: os
 
 * 为什么要有虚拟内存？
 1. *安全* ：虚拟内存是进程和物理内存中的一层，进程通过虚拟内存地址访问物理内存，而 *虚拟内存地址到物理内存地址的映射是由操作系统完成* 的， *操作系统会保证访问不越界* ；现代操作系统通常是多进程的，如果没有虚拟内存，进程可以随意访问物理内存，可能导致程序崩溃 ->  *实现方式* ： =CPU 中的 MMU、TLB、页表= 协作完成
@@ -21,7 +21,10 @@
    #+end_example
 
 
-* 虚拟/物理内存的映射方式 [[https://xiaolincoding.com/os/3_memory/vmem.html#%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98][小林coding]]
+* 虚拟/物理内存的映射方式
+
+📎：[[[https://xiaolincoding.com/os/3_memory/vmem.html#%E8%99%9A%E6%8B%9F%E5%86%85%E5%AD%98][小林coding]]]
+
 ** 内存分段
 1. 按 *逻辑* 将（虚拟/物理）内存分段（程序：代码段、数据段、堆段、栈段 的逻辑）
 2. *流程* ：CPU将 虚拟内存地址 交给 内存管理单元（MMU），由 MMU 查询 段表 找到 物理内存地址； *具体来说* ：虚拟内存地址分为 =段选择因子= 、 =段内偏移量= ，首先从段选择因子中找到段号，根据段号找到段表中的某一项，段表项中有 =段基地址= 、 =段界限= ，根据段基地址找到物理内存段起始位置，再和虚拟地址的段内偏移量计算得到最终物理内存地址，段界限用于判断内存访问是否越界；见：[[id:af60416a-d043-43ed-96b0-c6fbcb9040ad][图:段表及工作原理]]
@@ -32,11 +35,13 @@
       #+end_example
    2) 内存交换效率低（要将整个从内存交换到硬盘）
 
-*** 图:段表及工作原理 :ATTACH:
+
+*** 🖼 段表及工作原理 :ATTACH:
 :PROPERTIES:
 :ID:       af60416a-d043-43ed-96b0-c6fbcb9040ad
 :END:
 [[attachment:_20250822_094429screenshot.png]]
+
 
 ** 内存分页(🔥重点)
 1. 按 *固定大小* 划分（虚拟/物理）内存
@@ -59,35 +64,40 @@
 
 4. *TLB（快表、页表缓存）* ：缓存最常访问的页表项（局部性原理），缓存命中直接返回； *具体来说* ：CPU 将虚拟内存地址 交给 MMU，MMU 查询 TLB，命中则直接使用缓存的页表项，否则常规页表查询
 
-*** 图:页表及工作原理 :ATTACH:
+
+*** 🖼 页表及工作原理 :ATTACH:
 :PROPERTIES:
 :ID:       73c88c8b-35ce-4497-8a15-93d0397b17e5
 :END:
 [[attachment:_20250822_101140screenshot.png]]
 
-*** 图:多级页表及工作原理 :ATTACH:
+
+*** 🖼 多级页表及工作原理 :ATTACH:
 :PROPERTIES:
 :ID:       4f2750df-0519-4de9-b3f5-7e24aeba8a45
 :END:
 [[attachment:_20250822_103804screenshot.png]]
 
-*** 图:TLB、MMU工作原理 :ATTACH:
+
+*** 🖼 TLB、MMU工作原理 :ATTACH:
 :PROPERTIES:
 :ID:       a6223d1f-9896-48c0-ae64-f108eb98fa3b
 :END:
 [[attachment:_20250822_105410screenshot.png]]
 
+
 ** 段页式内存
 1. 将内存按逻辑分段，再将每个段分页；根据段表找到页表，根据页表找到对应物理页号
 
-*** 图:段页式工作原理 :ATTACH:
+
+*** 🖼 段页式工作原理 :ATTACH:
 :PROPERTIES:
 :ID:       1a322d7b-fa42-4a42-8e6e-3200a0b79056
 :END:
 [[attachment:_20250822_110942screenshot.png]]
 
 
-* 图:请求调页 :ATTACH:
+* 请求调页（图文） :ATTACH:
 :PROPERTIES:
 :ID:       37818a8d-725a-424d-8b37-9c491adc66ed
 :END:
@@ -95,7 +105,7 @@
 *流程* ：访问页表时，页表项中的物理页号无效，CPU 发出缺页中断，从磁盘加载页面到物理内存（若没有空闲页，则选择一个物理页换出 -> [[id:c4463c71-680f-449b-8da5-5853633e3a18][页面置换算法]]），修改页表项的状态位
 
 
-* 页面置换算法 [[https://www.bilibili.com/video/BV1YE411D7nH?spm_id_from=333.788.videopod.sections&vd_source=4441bc96046659b39d059d583f36ff52&p=57][bilibili-王道]]
+* 页面置换算法
 :PROPERTIES:
 :ID:       c4463c71-680f-449b-8da5-5853633e3a18
 :END:
@@ -114,25 +124,31 @@
 小咪被评为「最佳」小咪，拥有厕所「先进先出」特权，小咪需要 「最近最久未使用」的厕纸，此时厕所外的臭咪在敲门，小咪看了下「时钟」，拿出了「最不常用」的湿纸巾...
 #+end_comment
 
-** 图:最佳页面置换算法 :ATTACH:
+📎 [[https://www.bilibili.com/video/BV1YE411D7nH?spm_id_from=333.788.videopod.sections&vd_source=4441bc96046659b39d059d583f36ff52&p=57][bilibili-王道]]
+
+
+** 🖼 最佳页面置换算法 :ATTACH:
 :PROPERTIES:
 :ID:       f480d6bf-da5d-4fd9-a433-f1c12a1c21cf
 :END:
 [[attachment:_20250809_201423screenshot.png]]
 
-** 图:先进先出页面置换算法 :ATTACH:
+
+** 🖼 先进先出页面置换算法 :ATTACH:
 :PROPERTIES:
 :ID:       fd6d25d6-e11e-4ddc-9210-da084b16046c
 :END:
 [[attachment:_20250809_201601screenshot.png]]
 
-** 图:最近最久未使用页面置换算法 :ATTACH:
+
+** 🖼 最近最久未使用页面置换算法 :ATTACH:
 :PROPERTIES:
 :ID:       030cfed8-79d0-43cd-9e4d-de5cedef7e63
 :END:
 [[attachment:_20250809_201809screenshot.png]]
 
-** 图:时钟页面置换算法 :ATTACH:
+
+** 🖼 时钟页面置换算法 :ATTACH:
 :PROPERTIES:
 :ID:       4021ceb2-57e1-4dcb-ba1d-7f614c5ad54c
 :END:

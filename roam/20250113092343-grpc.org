@@ -2,18 +2,19 @@
 :ID:       a5c426e4-365b-447d-89f3-eddc9c517a01
 :END:
 #+title: grpc
-#+filetags: index
+#+filetags: rpc
 
-* grpc [[https://grpc.io/docs/languages/cpp/basics/][grpc官网:cpp]] [[https://grpc.io/docs/what-is-grpc/core-concepts/][grpc官网:核心概念]]
-google开源的高性能 RPC（远程过程调用）框架 ，使得在对服务器上方法的调用就像在本地一样（开发者只需关注业务逻辑无需关注底层网络通信），用于构建分布式系统。基于 [[id:0b3fad26-6096-455d-a8af-79522c5113f3][HTTP/2.0]] 和 [[id:13f67abf-4087-4d20-87d7-ed11e5b99edc][Protocol Buffers]]（传输协议、序列化协议），支持多种编程语言
+* grpc
+- grpc :: google开源的高性能 RPC（远程过程调用）框架 ，使得对服务器上方法的调用就像在本地一样（开发者只需关注业务逻辑无需关注底层网络通信），用于构建分布式系统，支持多种编程语言
+  1. 基于 [[id:98a7eb31-261b-4c66-9144-cb9adb4cf455][HTTP/2.0]] 和 [[id:2d06cf5c-702c-40bd-ad17-d1458156b2fa][Protocol Buffers]]
 
 *使用流程* ：
-1. .proto文件中定义：message格式、服务、服务内rpc方法（4种rpc类型：[fn:1]）
+1. .proto文件中定义：message格式、服务、服务内rpc方法（4种rpc类型[fn:1]）
 2. protoc、grpc插件：生成.pb、.grpc.pb文件
    - .pb.h和.pb.cc           :: message的序列化和反序列化代码
    - .grpc.pb.h和.grpc.pb.cc :: 服务和存根的框架代码
-3. grpc客户端      ：生成 Channel，在 Channel 基础上生成 Stub（存根），通过 Stub 调用 grpc服务端方法
-4. grpc服务端      ：
+3. grpc客户端：生成 Channel，在 Channel 基础上生成 Stub（存根），通过 Stub 调用 grpc服务端方法
+4. grpc服务端：
    1) 服务实现类 继承 grpc.pb 文件中的 Service类，重写所有rpc方法
       #+begin_example cpp
       class ChatServiceImpl final: public ChatService::Service { /*...*/ }
@@ -30,7 +31,84 @@ google开源的高性能 RPC（远程过程调用）框架 ，使得在对服务
 			});
       #+end_example
 
-*编译方法* 见：[[id:395677a5-f825-4935-a1d1-ef8a31f366cc][编译grpc]]
+📎 [[https://grpc.io/docs/languages/cpp/basics/][grpc官网:cpp]] [[https://grpc.io/docs/what-is-grpc/core-concepts/][grpc官网:核心概念]]
+
+
+** 编译grpc
+:PROPERTIES:
+:ID:       d85b1e53-a8a3-4718-8cdb-eec21968ff49
+:END:
+1. [[id:54642b64-644b-4f5a-977f-572f75973445][git走代理]]
+2. git clone -b <选择Tag> https://github.com/grpc/grpc
+3. cd grpc
+4. git submodule update --init
+5. mkdir -p cmake/build
+6. cd cmake/build
+7. cmake -DCMAKE_CXX_STANDARD=17 ../..
+8. make -j$(nproc)
+9. make install
+10. 安装到 /usr/local/bin，有些程序在 /usr/bin下寻找 -> 解决方式：[[id:bb654a41-440c-468d-999c-fd8470e4f15c][软连接]]
+
+
+* Protocol Buffers
+:PROPERTIES:
+:ID:       2d06cf5c-702c-40bd-ad17-d1458156b2fa
+:END:
+- Protocol Buffers :: google开发的 =语言无关= 、 =平台无关= 的 *结构化数据序列化协议* ，体积更小、解析更快、但可读性差（相比 JSON）；定义在 .proto文件，使用 protoc 编译生成 .pb.h、.pb.cc 文件
+
+*.pb文件中的方法* ：
+1. 基本字段           ：get()、set_xxx()、has_xxx()、clear_xxx() [fn:2]
+2. repeated修饰的字段 ：xxx_size()、xxx(index)、add_xxx()、mutable_xxx() [fn:3]
+   - repeated修饰的字段 :: 包含多个相同类型的值，类似"数组"
+
+📎 [[https://protobuf.dev/getting-started/cpptutorial/][Protocol Buffers官网]]
+
+
+** protoc
+- protoc :: 编译器，用于将符合 [[id:2d06cf5c-702c-40bd-ad17-d1458156b2fa][Protocol Buffers]] 协议的 .proto文件 编译成 服务端、客户端代码（不同语言的转换工作由对应的语言插件实现）
+
+
+*** protoc生成cpp代码
+:PROPERTIES:
+:ID:       bb79e103-432f-47e1-8ec7-1b109338704d
+:END:
+- 生成[[id:8ab4df56-e11f-42b8-87f8-4daa2fd045db][cpp]]代码 :: --cpp_out=./out：指定输出目录 ./out，会生成 example.pb.h 和 example.pb.cc
+  #+begin_src bash
+  protoc --cpp_out=./out example.proto
+  #+end_src
+- 生成[[id:a5c426e4-365b-447d-89f3-eddc9c517a01][gRPC]]代码 :: --grpc_out 生成 example.grpc.pb.h 和 example.grpc.pb.cc
+  #+begin_src bash
+  protoc --grpc_out=./out --plugin=protoc-gen-grpc=`which grpc_cpp_plugin` example.proto
+  #+end_src
+
+
+
+* absl
+:PROPERTIES:
+:ID:       3c06d3c1-83d0-459a-b6a6-2a27ced7a00d
+:ROAM_ALIASES: abseil
+:END:
+- absl :: （abseil）google开源的 C++ 基础库集合
+  1. 为 protobuf 和 grpc 提供高性能的 C++组件
+
+** absl链接失败问题
+:PROPERTIES:
+:ID:       52cf4505-b22b-4664-91b9-264fc1e8ac40
+:END:
+(我的解决方式) [[id:c651b8b0-bc76-451d-acac-0ea55329f0e8][cmake]] 中将编译器 clang++ 改成 [[id:3aa872a4-290a-4fc8-8e37-add919e44822][g++]]
+
+📎 [[https://blog.csdn.net/witton/article/details/144182568][MSYS2 MinGW64使用Protobuf新版本踩坑]]
+
+
+** 🖼 abseil、protobuf和grpc协作关系 :ATTACH:
+:PROPERTIES:
+:ID:       e9b3a6d1-0ec1-4891-935c-8a90d3e54259
+:END:
+[[attachment:_20250430_180211screenshot.png]]
+
+
+
+
 
 * Footnotes
 
@@ -44,4 +122,71 @@ rpc LotsOfReplies(HelloRequest) returns (stream HelloResponse);
 rpc LotsOfGreetings(stream HelloRequest) returns (HelloResponse);
 // NOTE 双向流式RPC  ：双发收发流
 rpc BidiHello(stream HelloRequest) returns (stream HelloResponse);
+#+end_example
+
+[fn:2]
+#+begin_example cpp
+/* .proto定义
+message User {
+  int32 id = 1;
+  string name = 2;
+  bool is_active = 3;
+}
+*/
+
+// 获取字段值
+int32_t id() const;                  // 返回 id 的值
+const std::string& name() const;     // 返回 name 的值（string 类型返回引用）
+bool is_active() const;              // 返回 is_active 的值
+
+// 设置字段值
+void set_id(int32_t value);          // 设置 id 的值
+void set_name(const std::string& value);  // 设置 name 的值
+void set_is_active(bool value);      // 设置 is_active 的值
+
+// 清空字段（恢复默认值）
+void clear_id();
+void clear_name();
+void clear_is_active();
+
+// 判断字段是否被显式设置（非默认值）
+bool has_id() const;
+bool has_name() const;
+bool has_is_active() const;
+#+end_example
+
+[fn:3]
+#+begin_example cpp
+/* .proto定义
+message Chat {
+  repeated string messages = 1;
+  repeated User members = 2;  // 嵌套消息类型
+}
+*/
+
+// 1. 获取列表信息
+int messages_size() const;                  // 获取 messages 列表长度
+int members_size() const;                   // 获取 members 列表长度
+
+// 2. 访问列表元素（通过索引）
+const std::string& messages(int index) const;  // 获取 messages 第 index 个元素
+const User& members(int index) const;          // 获取 members 第 index 个元素
+
+// 3. 添加元素（推荐方式）
+std::string* add_messages();                 // 新增一个空字符串到 messages，返回指针
+User* add_members();                         // 新增一个空 User 到 members，返回指针
+
+// 4. 直接操作底层容器（返回 vector 类似物的引用）
+google::protobuf::RepeatedPtrField<std::string>* mutable_messages();
+google::protobuf::RepeatedPtrField<User>* mutable_members();
+
+// 示例：通过容器操作
+auto* members = chat.mutable_members();
+User new_user;
+new_user.set_id(100);
+members->Add()->CopyFrom(new_user);  // 复制一个 User 到列表
+
+// 5. 清空列表
+void clear_messages();
+void clear_members();
 #+end_example

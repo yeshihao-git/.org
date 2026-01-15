@@ -4,9 +4,11 @@
 #+title: mysql事务
 #+filetags: mysql
 
-* mysql事务 [[https://xiaolincoding.com/mysql/transaction/mvcc.html#%E4%BA%8B%E5%8A%A1%E6%9C%89%E5%93%AA%E4%BA%9B%E7%89%B9%E6%80%A7][小林coding]]
-*mysql事务* ：数据库操作的 *最小执行单元* （包含一个或多个SQL语句），要么全部执行成功，要么全部执行失败
+* mysql事务
+- mysql事务 :: 数据库操作的 *最小执行单元* （包含一个或多个SQL语句），要么全部执行成功，要么全部执行失败
 # mysql原生的 MyISAM引擎 不支持事务
+
+[[[https://xiaolincoding.com/mysql/transaction/mvcc.html#%E4%BA%8B%E5%8A%A1%E6%9C%89%E5%93%AA%E4%BA%9B%E7%89%B9%E6%80%A7][小林coding]]]
 
 ** 事务的特性
 | 特性     | 说明                                                       | 如何实现             |
@@ -20,7 +22,7 @@
 - MVCC     :: 多版本并发控制
 
 
-* 事务隔离性（隔离性 I）
+** 事务隔离性（隔离性 I）
 事务隔离性：数据库允许多个事务并发访问数据
 
 *事务并发访问引发的问题* ：
@@ -50,7 +52,8 @@ MVCC保证读的时候看不到幻影；next-key lock保证写的时候造不出
 2. start transaction with consistent snapshot：执行这条命令后，事务开启
 #+end_comment
 
-** 图:四种隔离级别示例 :ATTACH:
+
+*** 四种隔离级别示例（图文） :ATTACH:
 :PROPERTIES:
 :ID:       fe05559c-4b0d-4951-af21-9099943f08ce
 :END:
@@ -61,8 +64,8 @@ MVCC保证读的时候看不到幻影；next-key lock保证写的时候造不出
 - 串行化 隔离级别下  ：事务 B 在执行将余额 100 万修改为 200 万时，由于此前事务 A 执行了读操作，这样就发生了读写冲突，于是就会被锁住，直到事务 A 提交后，事务 B 才可以继续执行，所以从 A 的角度看，余额 V1、V2 的值是 100 万，余额 V3 的值是 200 万。
 
 
-* MVCC
-** MVCC简易版本
+** MVCC
+*** MVCC简易版本
 多版本并发控制，用于解决 *可重复读* 隔离级别下 *快照读* 中的 *幻读* 问题
 1. *本质* ：每个事务读同一个数据，读到的是自己对应的历史版本，所以多个事务既能同时读，也能同时写，读写互不阻塞，实现数据库高并发
 2. 历史版本来自 undo log，一条记录与undo log串成一条版本链
@@ -70,14 +73,16 @@ MVCC保证读的时候看不到幻影；next-key lock保证写的时候造不出
 *读提交*   ：每次查询生成一个新的 ReadView -> 因此前后两次select结果可能不一样，因此不可重复读；具体示例见：[[https://xiaolincoding.com/mysql/transaction/mvcc.html#%E8%AF%BB%E6%8F%90%E4%BA%A4%E6%98%AF%E5%A6%82%E4%BD%95%E5%B7%A5%E4%BD%9C%E7%9A%84][小林coding]]
 *可重复读* ：启动事务时生成一个 Read View，整个事务期间都在用这个 ReadView；具体示例见：[[https://xiaolincoding.com/mysql/transaction/mvcc.html#%E5%8F%AF%E9%87%8D%E5%A4%8D%E8%AF%BB%E6%98%AF%E5%A6%82%E4%BD%95%E5%B7%A5%E4%BD%9C%E7%9A%84][小林coding]]
 
-** MVCC详细版本
+
+*** MVCC详细版本
 *关键组件* ：
 1. 记录行结构中通过 undo log 形成的版本链
 2. Read View
 
-*MVCC（多版本并发控制）原理* ：[[id:3e9e5c9f-a1db-4a6c-b921-f2a33b2abbcc][图:Read View结构、COMPACT行结构中的隐藏列、MVCC原理]]
+*MVCC（多版本并发控制）原理* ：[[id:3e9e5c9f-a1db-4a6c-b921-f2a33b2abbcc][Read View结构、COMPACT行结构中的隐藏列、MVCC原理（图文）]]
 
-*** 图:Read View结构、COMPACT行结构中的隐藏列、MVCC原理 :ATTACH:
+
+**** Read View结构、COMPACT行结构中的隐藏列、MVCC原理（图文） :ATTACH:
 :PROPERTIES:
 :ID:       3e9e5c9f-a1db-4a6c-b921-f2a33b2abbcc
 :END:
@@ -104,4 +109,3 @@ MVCC保证读的时候看不到幻影；next-key lock保证写的时候造不出
    - 记录的 trx_id *在*   Read View的 m_ids列表 中， *不可见* （说明生成该版本记录的事务还在运行且未提交）
    - 记录的 trx_id *不在* Read View的 m_ids列表 中， *可见*   （说明生成该版本记录的事务还在运行且提交）
 不可见的情况下，顺着版本链查找可见的 trx_id
-

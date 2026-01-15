@@ -4,43 +4,25 @@
 #+title: 编译期优化
 #+filetags: cpp
 
-* 编译期优化 [[https://www.learncpp.com/cpp-tutorial/the-as-if-rule-and-compile-time-optimization/][learncpp5.4]]
-1. 编译器对 *变量/表达式* 运行时计算 提前到 编译时计算，好处：提高运行时候效率，坏处：不好 debug；有下面三种优化方式
-   - 常量折叠 :: 将常量 *表达式* （3 + 7）替换为结果（10）
-   - 常量传播 :: 已知常量值的 *变量* 替换为结果（x 替换为7）
-   - 死代码消除 :: 移除未使用的代码（没有使用的变量定义）
-   #+begin_src cpp :results output :namespaces std :includes <iostream>
-   int x { 7 };
-   int y { 3 };
-   int z { 10 };
-   cout << x + y << '\n';
-   #+end_src
+* 编译期优化
+- 编译期优化 :: 编译器对 *变量/表达式* 运行时计算 提前到 编译时计算（好处：提高运行时候效率，坏处：不好 debug）3种优化方式:
+  + 常量折叠 :: 将常量 *表达式* （3 + 7）替换为结果（10）
+  + 常量传播 :: 已知常量值的 *变量* 替换为结果（x 替换为7）
+  + 死代码消除 :: 移除未使用的代码（没有使用的变量定义）
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+int x { 7 };
+int y { 3 };
+int z { 10 };
+cout << x + y << '\n';
 
-   #+RESULTS:
-   : 10
+// NOTE 该示例 可能 在编译期进行了以下操作
+// 常量传播   -> 将 x 和 y 替换为 7 和 3
+// 常量折叠   -> 将 7 + 3 替换为 10 （如果不进行替换，则每次运行时就会重复计算 7 + 3，运行 100 次就计算 100 次）
+// 死代码消除 -> 移除 int z { 10 }; 这行代码，因为它没被使用
+#+end_src
 
-   该示例 *可能* 在编译期进行了以下操作
-   常量传播   -> 将 x 和 y 替换为 7 和 3
-   常量折叠   -> 将 7 + 3 替换为 10 [fn:1]
-   死代码消除 -> 移除 =int z { 10 };= 这行代码，因为它没被使用
-
-  - 拷贝省略 :: 编译器优化掉 不必要的拷贝构造函数调用，见：[[id:3cc311ac-4ed0-4e9c-af58-5b1daed5ec94][拷贝省略]]
-
-3. constexpr变量 具有 *编译时计算* 的能力 ，（特殊） =用常量表达式初始化的const int= 为常量表达式；具有 编译期计算 的能力
-   #+begin_src cpp :results output :namespaces std :includes <iostream>
-   const double x { 1.2 };
-   const double y { 3.4 };
-   const double z { x + y }; // x + y may evaluate at runtime or compile-time
-   const int a {10}; // 常量表达式，且在编译器计算
-   cout << z;
-   #+end_src
-
-   #+RESULTS:
-   : 4.6
+#+RESULTS:
+: 10
 
 
 
-* Footnotes
-
-[fn:1]
-如果不进行替换，则每次运行时就会重复计算 7 + 3，运行 100 次就计算 100 次

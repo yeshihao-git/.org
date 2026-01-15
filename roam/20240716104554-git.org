@@ -2,7 +2,7 @@
 :ID:       52880cac-b451-4efc-bf87-3edde817eb06
 :END:
 #+title: git
-#+filetags: cli
+#+filetags: tools
 
 * git
 用于版本管理的命令行工具，包含四个重要的区域：

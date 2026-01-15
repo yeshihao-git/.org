@@ -7,27 +7,42 @@
 * 全栈聊天项目
 ** 登录 :业务:
 首先用户在登录聊天框中输入账号密码，点击登录，就由 QT 的 HTTP 管理模块，将消息打包成 JSON 格式发送到后端的网关服务器。后端的网关服务器里注册了一些回调函数，然后网关服务器收到这个 JSON 之后就去调用对应的登录回调函数。在登录回调函数里会先去找状态服务器，然后状态服务器就去查询用户ID对应的聊天服务器，然后返回聊天服务器的 IP、端口以及一个用于临时身份验证的 token。客户端收到后，使用 它的TCP管理模块去连接聊天服务器，并用 token 进行临时身份验证。验证成功时聊天服务器去 MySQL 里查询用户的基本信息、好友申请列表以及好友列表，并返回给 客户端。客户端用返回的数据更新它的user管理模块（user管理模块里存的就是用户相关的一些信息），最后用user管理模块里面的信息更新界面。
+
+
 ** 验证码 :业务:
 首先用户在注册界面输入邮箱，点击获取验证码，客户端检查邮箱格式，若正确，就通过 HTTP 管理模块，将用户输入打包成 JSON 格式发送到后端的网关服务器。网关服务器调用验证码回调函数找到验证服务器，验证服务器通过 UUID 生成一个随机的四位数，并记录到 Redis 中设置过期时间，然后将这个四位数发送到用户邮箱。
+
+
 ** 注册 :业务:
 首先用户在注册界面输入用户名、密码、重复密码、邮箱、验证码，客户端进行简单的检验（字段是否为空，邮箱格式是否正确），然后通过 HTTP 管理模块将这些数据打包成 JSON 格式发送到后端的网关服务器，网关服务器调用注册回调函数，检查验证码，若和 Redis 当中的验证码一致，则将这条记录插入到 MySQL，并返回给客户端注册成功的信息。
+
+
 ** 重置密码 :业务:
 首先用户在重置密码界面输入邮箱，点击获取验证码，得到并输入校验码以及新密码后，点击重置密码，这些数据就会被打包成一个 JSON， 通过 HTTP 管理模块发送到后端的网关服务器。网关服务器调用重置密码回调函数：检查一下验证码是否正确，以及这个邮箱是否存在，没问题之后就更新密码，并且返回密码重置成功给客户端。
+
+
 ** 好友搜索 :业务:
 首先用户在好友搜索框里输入好友名称，这些数据被打包成一个 JSON，通过 TCP 管理模块发送到聊天服务器，聊天服务器调用好友搜索回调函数。先查 Redis， Redis 没有就查 MySQL， MySQL 查到后，回写 Redis，并返回给客户端。客户端收到后，弹出查找成功的窗口。
+
+
 ** 添加好友流程 :业务:
 申请好友方A，在搜索框输入 被申请方B的名字，点击搜索，搜索成功后点击添加好友按钮，弹出添加好友会话框，填入备注之类的信息，点确定，相关信息被打包成一个 JSON， 通过 TCP 管理模块发送到聊天服务器，聊天服务器调用对应的回调函数：更新数据库的好友申请表（记录为申请方id，被申请方id，状态），记录中状态为 0 代表还没有添加好友；接着通知 B，首先在 Redis 里查 B 和他所在服务器的映射关系，如果不存在，说明 B 不在线，直接返回。如果存在，就能通过 B 的 uid 找到他所在的服务器。如果和我们是同一个服务器，就直接通过 B 的 uid 找到他所在的会话，然后回包给他的客户端。如果不在同一个服务器，那就通过 gRPC 将消息转发给 B 所在的聊天服务器，再找到 B 所在的会话，回包给客户端。此时 B 的好友申请列表显示好友申请请求。B 点击添加，在好友验证对话框里填写备注相关的信息，点击确定，相关信息就会打包成一个 JSON 通过 TCP 模块发送到聊天服务器，聊天服务器调用对应的回调函数：更新数据库的好友申请表、好友表，接着通知 A ，先定位 A 的位置，Redis 里看有没有 A 的 uid 和他所在的聊天服务器的映射，若没有，代表A不在线，直接返回。若有，判断A是在同一个聊天服务器，还是在不同聊天服务器。如果在同一个聊天服务器，就直接通过A的 uid 找到他所绑定的会话，然后发送消息给A的客户端。如果不在同一个服务器就通过 gRPC 将消息转发到A所在的聊天服务器，再通过 A 的 uid 找到对应的会话，将消息返回给他所在的客户端，A客户端里的这个 user管理模块 就会被更新，界面中更新 A 的好友列表。
+
+
 ** MVC架构 :客户端:
 M：模型层，用于存储数据和提供数据访问。对应代码中的 user管理类
 V：视图层，用户可以看到的UI界面。对应代码中的 界面类
 C：控制层，业务逻辑控制。对应代码中的 http/tcp管理类
 具体流程：视图层（界面类）用户进行某些操作，控制层（http/tcp管理类）与后端交互获取数据更新 模型层（user管理类），视图层 再根据 模型层 更新界面
+
+
 ** 动态加载聊天列表 :客户端:
 在列表滚动区域捕获鼠标滚轮事件，滚动到底部时发送一个加载聊天用户的信号，此时UI界面加载gif动画，后台加载好友列表，加载完毕后更新UI界面
 #+begin_example cpp
 bool ChatUserList::eventFilter(QObject *watched, QEvent *event)
 void ChatDialog::slot_loading_chat_user() // 加载gif动画（LoadingDlg，模态形式），后台ChatDialog::addChatUserList() -> UserMgr::GetChatListPerPage() -> 更新UI界面
 #+end_example
+
 
 ** redis在项目中的使用场景/用到的redis函数？ :redis:
 String的Set/Get：临时数据（登录token、验证码）、热点数据（用户信息）、共享数据（用户服务器映射）
@@ -40,6 +55,7 @@ Hash的HSet     ：负载均衡（连接数最小的聊天服务器）
 4. 用户所在服务器（查用户在哪个服务器）#define USERIPPREFIX  "uip_"
 5. 用户信息（用户名）                  #define NAME_INFO  "nameinfo_"
            （id）                      #define USER_BASE_INFO "ubaseinfo_"
+
 
 ** mysql存储哪些数据？ :mysql:
 - user表         :: 用户信息表
@@ -68,6 +84,7 @@ to_uid  : 被申请人ID
 status  : 申请状态（0=待处理，1=已同意）
 #+end_comment
 
+
 ** mysql表中哪些字段设置为索引，为什么？ :mysql:
 - user表 ::
   uid  ：唯一索引 -> uid搜索用户查询mysql
@@ -77,6 +94,8 @@ status  : 申请状态（0=待处理，1=已同意）
   self_friend(self_id, friend_id)：联合唯一索引，防止重复添加好友
 - friend_apply表 ::
   from_to_uid(from_uid, to_uid)： 联合唯一索引，防止重复申请好友
+
+
 ** 项目中微服务的拆分、职责边界怎么划分？ :服务端:
 *网关服务器* ：外部请求的统一入口，根据客户端请求业务不同，协调其他服务共同完成。可以进行 登录、注册、重置密码 等业务
 *状态服务器* ：用于查询聊天服务器相关的信息：
@@ -86,11 +105,13 @@ status  : 申请状态（0=待处理，1=已同意）
 *验证服务器* ：用于发送验证码到用户邮箱
 *聊天服务器* ：用户客户端登录后所在的服务器。可以进行 好友添加、发送消息 等业务
 
+
 ** 怎么处理粘包/怎么设计的buffer？ :服务端:
 tlv消息格式： =消息 = 4字节消息头（消息id+消息长度） + 消息体=
 1. 用一个 C风格数组（char数组）接收异步读取到的数据
 2. 先固定读取4字节，提取出里面的 消息id、消息长度 并记录到 recv_node结构体；再根据消息长度读取消息体，记录到 recv_node结构体
 3. 将recv_node结构体、CSession放到 logic_node结构体（包含CSession意味着后续可以在此CSession中发送消息）交给LogicSystem处理
+
 
 ** tmp
 *** 服务端
@@ -255,6 +276,7 @@ void ChatView::onVScrollBarMoved(int min, int max)
 自定义的输入框（KeyFinderEdit）重写了 按键按下事件，键盘上下会在搜索结果中的上下选择项，键盘回车跳转到对应位置
 上下选择的实现：上选择 检查当前选中的文件项（currRow），如果到了第一行（isSelectedFirst()）就取消当前选择，移动到上一个文件项（若是第一个则跳到最后一个文件项），否则当前文件项目中选择上一个。下选择类似
 
+
 ** 主界面
 垂直布局 + 「显示」自定义的输入框（KeyFinderEdit）+ 列表视图（QListView）关联 自定义单文件结果列表模型（KeyFinderSingleFileListModel）、取出 选择模型
 
@@ -283,12 +305,23 @@ void ChatView::onVScrollBarMoved(int min, int max)
 * 基于C++11重构百万并发Reactor服务器
 ** 项目介绍
 这个一个基于 reactor模型实现的高并发TCP服务器框架，基于这个TCP服务器框架可以根据业务逻辑进行扩展（eg：TCP服务器框架基础上封装EchoServer），具有 事件驱动、可扩展性高、线程安全 等特点。
+
+
 ** 整体架构
-这个TCP服务器框架 采用主从reactor模式：主事件循环绑定Accept，负责监听并且接受新连接，分配从事件循环创建Connection，负责IO。它的底层是通过 epoll_wait 不断返回事件，根据事件类型调用不同回调函数（上层向下层注册回调函数，下层根据触发的事件类型调用不同回调函数）[fn:1]。
+这个TCP服务器框架 采用主从reactor模式：主事件循环绑定Accept，负责监听并且接受新连接，分配从事件循环创建Connection，负责IO。它的底层是通过 epoll_wait 不断返回事件，根据事件类型调用不同回调函数（上层向下层注册回调函数，下层根据触发的事件类型调用不同回调函数）
+#+begin_comment 示例
+上层：EchoServer
+下层：TcpServer
+再下层：epoll_wait
+#+end_comment
 在这个TCP服务器框架上可以根据业务逻辑封装服务器（eg：EchoServer），添加可选的线程池用于处理具体业务。
+
+
 ** 线程模型
 TCP层，one thread one loop（一个线程对应一个事件循环）：（主线程）主事件循环绑定Accept，负责监听、接受新连接；（其他线程）从事件循环线程池中的从事件循环绑定 Connection，负责IO。
 应用层，（其他线程）有可选的工作线程池负责业务处理（计算密集型任务）。
+
+
 ** 负载均衡（Connection如何与EventLoop对应）
 对客户端socket的fd进行哈希运算（对线程数量取余）得到的数作为从事件循环的下标索引，以此事件循环创建Connection
 #+begin_example cpp
@@ -297,11 +330,11 @@ spConnection conn(new Connection(subloops_[clientsock->fd()%threadnum_].get(),st
 #+end_example
 
 ** tmp
-** YES 从 accept 新连接到连接读写、消息处理、再到回包的完整链路描述，包括涉及的对象和回调绑定位置
+*** YES 从 accept 新连接到连接读写、消息处理、再到回包的完整链路描述，包括涉及的对象和回调绑定位置
 - 新连接： *「主线程」* Acceptor::newconnection()接受连接，构造客户端socket，回调TcpServer::newconnection()，在从EventLoop中选择一个，并创建Connection，Connection内部有客户端socket和clientchannel并注册读写/错误/关闭回调，后续Channel::handleevent()触发对应回调
 - 消息处理/回包： *「IO线程A」* clientchannel触发读事件，回调Connection::onmessage()，Connection::onmessage()读取数据到自己的缓冲区，回调TcpServer::onmessage()，TcpServer::onmessage()回调上层EchoServer::HandleMessage()，EchoServer::HandleMessage()中将 =任务std::bind(&EchoServer::OnMessage,this,conn,message)= 放入工作线程池的任务队列， *「WORK线程A」* 调用任务EchoServer::OnMessage，EchoServer::OnMessage调用Connection::send()发送响应，Connection::send()中判断出当前执行该函数的线程是「WORK线程A」，于是通过EventLoop::queueinloop将任务放入conn对应的EventLoop::taskqueue中，EventLoop::queueinloop内通过eventfd唤醒「IO线程A」， *「IO线程A」* 处理taskqueue
 
-** YES 为什么要用 eventfd 唤醒而不使用其他手段？
+*** YES 为什么要用 eventfd 唤醒而不使用其他手段？
 - 简单只需1个fd，与epoll无缝集成
   pipe                  ：需要2个fd
   pthread条件变量/信号量：不能纳入epoll的等待集合
@@ -309,17 +342,17 @@ spConnection conn(new Connection(subloops_[clientsock->fd()%threadnum_].get(),st
   timerfd               ：专门做计时器事件，不适合作为跨线程“任务到达”的通知
   C++11互斥锁/条件变量  ：与epoll集成不好，会造成双重等待（既等条件变量，又等epoll_wait）
 
-** YES Connection在回调过程中为什么要用shared_from_this()，用this行吗，或者 new 一个Connection的共享指针？
+*** YES Connection在回调过程中为什么要用shared_from_this()，用this行吗，或者 new 一个Connection的共享指针？
 # Connection::onmessagecallback_(shared_from_this(),message);
 - 用 this 不行，因为 this 不能增加 Connection 的引用计数，可能在回调过程中 Connection 被意外释放；new一个Connection的共享指针也不行，因为这样创建的共享指针引用计数与正在管理Connection的共享指针引用计数不同步（创建了新的shared_ptr），使用shared_from_this() 就能共享正在管理Connection的共享指针的引用计数
 
-** YES 如何做消息拆包？Buffer::pickmessage() 三种分隔方式各自适用什么场景？
+*** YES 如何做消息拆包？Buffer::pickmessage() 三种分隔方式各自适用什么场景？
 - 消息 = 消息头(固定4字节) + 消息体；读取消息头获取长度信息，根据长度信息读取消息体
 - 0：无分割符，适合定长/持续流（eg：音视频）
   1：4字节消息头（默认），处理粘包问题
   2：\r\n\r\n分隔，处理HTTP
 
-** EventLoop::stop_ 是原子变量，停止时如何保证不会丢任务？如何优雅退出所有 subloops_ 与工作线程？
+*** EventLoop::stop_ 是原子变量，停止时如何保证不会丢任务？如何优雅退出所有 subloops_ 与工作线程？
 - EventLoop::stop() 会将 stop_ 设置为 true，然后通过 eventfd 通知 EventLoop 将任务队列中的任务全部处理，同时 stop_=true 后，EventLoop::run() 中 while循环停止，也就是 事件循环停止了
 - 设计了一个 ThreadPool::stop()，将 原子变量 stop_设置为true，然后唤醒全部阻塞的线程，等待它们执行完成；被唤醒的线程发现 stop_=true且任务队列为空就直接return，否则先将任务做完，下次while循环退出
   *补充* ：不直接在析构函数中设计这个逻辑是为了增加灵活性，用户可以直接调用 stop() 来手动停止线程池；ThreadPool::stop() 中一开始设计 if(stop_) return; 是因为join过的线程不能再join
@@ -335,7 +368,7 @@ spConnection conn(new Connection(subloops_[clientsock->fd()%threadnum_].get(),st
   }
   #+end_example
 
-** YES 为什么 EventLoop 里集成了 timerfd_？EventLoop::conns_ 和 TcpServer::conns_ 都维护了连接，为什么要两份？
+*** YES 为什么 EventLoop 里集成了 timerfd_？EventLoop::conns_ 和 TcpServer::conns_ 都维护了连接，为什么要两份？
 - timerfd是计时器，可以打破程序执行的流程，每隔一段事件去做某件事，这里通过 timerfd 来定期检查 Connection 是否超时，将超时Connection从EventLoop中删除，并从TcpServer中删除
   #+begin_comment
   *具体来说* ：EventLoop中继承 timerfd、timerchannel 周期性触发 handletimer()，handletimer()设置重新计时并遍历所有 Connection，若超时，则从EventLoop::conns中删除，回调TcpServer::removeconn，TcpServer::removeconn将Connection从TcpServer::conns中删除
@@ -346,7 +379,7 @@ spConnection conn(new Connection(subloops_[clientsock->fd()%threadnum_].get(),st
   假设将空闲连接检测交给TcpServer::conns，则TcpServer性能不好，因为需要定期完整检查全部Connection，而TcpServer的职责主要是监听和接受新连接
   #+end_comment
 
-** YES 有无考虑进程级信号处理（如 SIGINT）触发所有 loops、ThreadPool 的优雅退出？
+*** YES 有无考虑进程级信号处理（如 SIGINT）触发所有 loops、ThreadPool 的优雅退出？
 - 有进程级的信号处理，捕获到 SIGINT、SIGTERM 时，调用自定义的Stop函数
   #+begin_example cpp
   signal(SIGTERM,Stop);    // 信号15，系统kill或killall命令默认发送的信号。
@@ -357,17 +390,17 @@ spConnection conn(new Connection(subloops_[clientsock->fd()%threadnum_].get(),st
   delete echoserver;
   #+end_example
 
-** YES 实现主从 Reactor 吗？mainloop_ 和 subloops_ 的职责边界是什么？新连接如何在多个 EventLoop 之间分配（策略/理由），支持连接迁移吗？
+*** YES 实现主从 Reactor 吗？mainloop_ 和 subloops_ 的职责边界是什么？新连接如何在多个 EventLoop 之间分配（策略/理由），支持连接迁移吗？
 - 主事件循环负责 监听/接受 新连接（Acceptor绑定在主事件循环），从事件循环负责Connection的IO事件、超时管理（事件循环内有个定时器，每隔一段时间检查Connection）
 - 使用 哈希方法，简单且无锁（eg：轮询按顺序分配连接，因此可能需要锁）
 
-** YES 为什么 Socket、Channel 在不同地方用 unique_ptr，而连接放在 std::map<int, spConnection>？
+*** YES 为什么 Socket、Channel 在不同地方用 unique_ptr，而连接放在 std::map<int, spConnection>？
 - socket表示网络连接，channel表示事件，每个 Connection 独占各自的socket、channel，因此使用 unique_ptr；而 Connection 存在于 TcpServer 和 EventLoop 中，且在一些回调函数中需要传递 Connection，因此使用 shared_ptr，以便在回调链路中延续生命周期
 
-** YES ThreadPool 主要用于 IO 线程还是工作线程？threadtype_ 的意图是什么？
+*** YES ThreadPool 主要用于 IO 线程还是工作线程？threadtype_ 的意图是什么？
 - 都有，用 threadtype_ 标识线程池类型
 
-** YES 用什么方式压测（客户端、QPS、RT、连接数、CPU/内存）？
+*** YES 用什么方式压测（客户端、QPS、RT、连接数、CPU/内存）？
 - 虚拟机：4核CPU、2g内存 Ubuntu系统
   sh脚本中在后台起了30个客户端，每个客户端发送10万个请求，计算下来大概1秒10万
 - autodl重庆A区：32核CPU 120g内存 Ubuntu系统
@@ -376,10 +409,10 @@ spConnection conn(new Connection(subloops_[clientsock->fd()%threadnum_].get(),st
   + QPS=请求/每秒，QPS是每秒查询率
 
 
-
 * 虚拟数字人
 ** 项目流程
 基于博物馆场景的数据集对大模型进行微调，增强模型对于博物馆场景的理解能力，但模型对于具体数字类数据的推理依旧不够准确；因此考虑外挂知识库，具体做法是将知识库进行向量化存入向量库，用户查询时，用户查询会被向量化并在向量库中进行相似度搜索，相似度top k的内容会作为模型的参考，我们可以设置prompt要求模型直接使用检索出的数字，以达到数字类数据的推理准确性。
+
 
 ** （低优先级）具体细节
 *微调流程* ：[[https://xtx0o8yn7x.feishu.cn/docx/XjvpdaeQcoF8d3xhpbCcoOJNn9b][微调]]
@@ -427,6 +460,7 @@ spConnection conn(new Connection(subloops_[clientsock->fd()%threadnum_].get(),st
 ]
 #+end_example
 
+
 ** （低优先级）LoRA原理
 # （低秩矩阵适配）
 1. *秩 代表信息量* ：秩越低则该矩阵所含信息量越少
@@ -449,11 +483,3 @@ spConnection conn(new Connection(subloops_[clientsock->fd()%threadnum_].get(),st
    推理时 =最终权重矩阵 = 原始权重矩阵 + 低秩矩阵A * 低秩矩阵B=
 
 
-* Footnotes
-
-[fn:1]
-#+begin_comment 示例
-上层：EchoServer
-下层：TcpServer
-再下层：epoll_wait
-#+end_comment

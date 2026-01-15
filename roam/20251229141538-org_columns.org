@@ -1,0 +1,27 @@
+:PROPERTIES:
+:ID:       a42368bd-6450-41d5-bbba-b92a33826183
+:END:
+#+title: org-columns
+#+filetags: org-mode
+
+* org-columns
+- org-columns :: 列视图，方便查看/编辑 outline tree 中的属性
+
+** 快速开始
+|------------------+------------------|
+| 函数             | 作用             |
+|------------------+------------------|
+| org-columns      | 打开 column view |
+| org-columns-quit | 退出 column view |
+|------------------+------------------|
+
+** org mode自定义column view格式
+:PROPERTIES:
+:ID:       a3c8970f-45aa-4ab9-b863-68bd2e9e6cf5
+:END:
+#+begin_example bash
+org文件开头输入以下内容
+#----------------.org文件------------------#
+#+COLUMNS: [%列宽度][标题/属性] x n
+#----------------.org文件------------------#
+#+end_example

@@ -1,10 +1,11 @@
 :PROPERTIES:
 :ID:       7a54e256-abbf-4d07-809c-85918ef01e0c
+:ROAM_ALIASES: mysql执行一条sql查询语句期间发生了什么？
 :END:
-#+title: mysql执行一条sql查询语句期间发生了什么？
+#+title: mysql查询流程
 #+filetags: mysql
 
-* 图:mysql执行一条sql查询语句期间发生了什么？ :ATTACH:
+* mysql查询流程（图文） :ATTACH:
 :PROPERTIES:
 :ID:       22ac63cb-7466-402a-b866-e8a391eb837a
 :END:

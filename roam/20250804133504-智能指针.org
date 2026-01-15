@@ -5,7 +5,347 @@
 #+filetags: cpp
 
 * 智能指针
-是 RAII 思想的体现：通过 对象生命周期 自动化管理动态内存资源；具体如下：
-1. [[id:02ce83ed-31b4-4906-89e4-271bbf432834][std::unique_ptr]]
-2. [[id:40c9dfcd-6bcb-4bec-8160-89b3187c4997][std::shared_ptr]]
-3. [[id:eb06d6f0-46b3-4793-836e-6bd8e3a4814e][std::weak_ptr]]
+- 智能指针 :: RAII 思想的体现，用 类的生命周期 自动管理资源。如下：
+  1. [[id:1bb26420-ad68-42fa-aa2e-f2f72977a5c9][std::unique_ptr]]
+  2. [[id:1b0f6b90-ad0b-49a3-9868-fa9345c70b60][std::shared_ptr]]
+  3. [[id:fdebcab9-1f2c-41e4-89fc-075025234c9b][std::weak_ptr]]
+
+
+** std::unique_ptr
+:PROPERTIES:
+:ID:       1bb26420-ad68-42fa-aa2e-f2f72977a5c9
+:END:
+- std::unique_ptr :: （cpp11） *独占资源* 的智能指针，一次只有一个这样的指针管理资源，不可拷贝，可移动
+  1. *底层* ：指针指向 资源
+  2. （cpp14）推荐使用 =std::make_unique= ，更简洁，且解决了一个异常安全问题 [fn:1]
+  3. *传参给函数* 使用 裸指针 =std::unique_ptr.get()= 而不是 =std::unique_ptr= （后者会导致 *资源所有权转移到函数* 里）[fn:2]
+  4. *函数返回* 使用 值传递 返回就行（移动语义可用时，编译器会自动使用）[fn:3]
+
+
+** std::shared_ptr
+:PROPERTIES:
+:ID:       1b0f6b90-ad0b-49a3-9868-fa9345c70b60
+:END:
+- std::shared_ptr :: （cpp11） *共享资源* 的智能指针，多个指针共同管理资源
+  1. *底层* 主要有：指向资源的指针 + 指向 *控制块* 的指针。控制块中有：[fn:4]
+     - 强引用计数（ =use_count= ） ：表示管理资源的共享指针数量，管理资源生命周期；
+       每增加一个共享指针管理资源： =use_count+1= ，每减少： =use_count-1= ， =use_count=0= 时， =weak_count-1= 销毁资源
+     - 弱引用计数（ =weak_count= ）：表示观察资源的 std::weak_ptr 数量，管理控制块生命周期；
+       每增加一个弱指针观察资源： =weak_count+1= ，每减少： =weak_count-1= ， =weak_count=0= 时，销毁控制块
+  2. 🔥 通过拷贝 =std::shared_ptr= 的拷贝构造 *共同管理资源* [fn:5]
+  3. =std::make_shared()= *初始化* 智能指针，简单安全
+  4. 创建返回智能指针的函数， *返回std::unique_ptr*
+     - [[id:02ce83ed-31b4-4906-89e4-271bbf432834][std::unique_ptr]]  --可以转换-->  std::shared_ptr
+     - std::shared_ptr  --不能转换-->  std::unique_ptr
+  5. *循环引用* 问题，使用[[id:fdebcab9-1f2c-41e4-89fc-075025234c9b][std::weak_ptr]]
+
+
+** std::weak_ptr
+:PROPERTIES:
+:ID:       fdebcab9-1f2c-41e4-89fc-075025234c9b
+:END:
+- 循环引用 :: 两个对象内部的 std::shared_ptr 互相指向对方，导致引用计数无法归 0，内存泄漏 。解决方式：将其中一个类内部指针改为 std::weak_ptr [fn:6]
+- std::weak_ptr :: （cpp11）用于解决 std::shared_ptr 产生的 *循环引用* 问题，因为是资源的 *观察者* ，不是所有者， *不会增加引用计数* ，内部结构见：[[id:f8158484-8008-4cb1-86a6-f9a86e5501ae][图:shared_ptr和weak_ptr内部结构]]
+  1. 使用 =lock()= 转为 std::shared_ptr 后访问内部资源（std::weak_ptr 没有 =operator->= 不能直接使用）[fn:7]
+  2. 使用 =expired()= 判断是否指向无效对象 [fn:8]
+
+
+***  附件
+**** 图:shared_ptr和weak_ptr内部结构 :ATTACH:
+:PROPERTIES:
+:ID:       f8158484-8008-4cb1-86a6-f9a86e5501ae
+:END:
+[[attachment:_20250810_170251screenshot.png]]
+
+
+* Footnotes
+
+[fn:1]
+#+begin_src cpp
+// 编译器可能的处理顺序：T -> function_that_can_throw_exception -> std::unique_ptr
+// 可能的异常安全问题  ：T 已经被创建，函数抛出异常，但 std::unique_ptr 还没创建好，造成内存泄漏
+some_function(std::unique_ptr<T>(new T), function_that_can_throw_exception());
+
+// 不会内存泄漏：T 和 std::unique_ptr 都在 make_unique 内部创建
+some_function(std::make_unique<T>(), function_that_can_throw_exception());
+#+end_src
+
+[fn:2]
+#+name: 传递 unique_ptr 到函数
+#+begin_src cpp :results output :namespaces std :includes <iostream> <memory> <utility>
+class Resource {
+public:
+	Resource() { std::cout << "Resource acquired\n"; }
+	~Resource() { std::cout << "Resource destroyed\n"; }
+};
+
+std::ostream& operator<<(std::ostream& out, const Resource&) {
+	out << "I am a resource";
+	return out;
+}
+
+// NOTE 这个函数获取 资源的管理权，这不是我们想要的
+void takeOwnership(std::unique_ptr<Resource> res) {
+     if (res)
+          std::cout << *res << '\n';
+} // NOTE 资源在这里释放
+
+int main() {
+    auto ptr{ std::make_unique<Resource>() };
+
+    // takeOwnership(ptr);         // FIXME std::unique_ptr 没有拷贝语义
+    takeOwnership(std::move(ptr)); // 使用移动语义
+
+    std::cout << "Ending program\n";
+}
+#+end_src
+
+#+RESULTS:
+: Resource acquired
+: I am a resource
+: Resource destroyed
+: Ending program
+
+#+name: 传递 裸指针 到函数
+#+begin_src cpp :results output :namespaces std :includes <iostream> <memory>
+class Resource {
+public:
+	Resource() { std::cout << "Resource acquired\n"; }
+	~Resource() { std::cout << "Resource destroyed\n"; }
+};
+
+std::ostream& operator<<(std::ostream& out, const Resource&) {
+	out << "I am a resource";
+	return out;
+}
+
+// NOTE 接受裸指针：表示函数只使用资源，而不管理资源
+void useResource(const Resource* res) {
+	if (res)
+		std::cout << *res << '\n';
+	else
+		std::cout << "No resource\n";
+}
+
+int main() {
+  auto ptr{ std::make_unique<Resource>() };
+
+  useResource(ptr.get()); // 获取资源本身
+
+  std::cout << "Ending program\n";
+} // NOTE 资源在此处释放，ok：也就是说 调用完函数，回到 main，资源依旧被 std::unique_ptr 管理着
+#+end_src
+
+#+RESULTS:
+: Resource acquired
+: I am a resource
+: Ending program
+: Resource destroyed
+
+[fn:3]
+#+begin_src cpp :results output :namespaces std :includes <iostream> <memory>
+std::unique_ptr<Resource> createResource() { // 值传递 返回，移动语义可用时，会移动，此处编译器 自动使用 移动语义
+     return std::make_unique<Resource>();
+}
+
+int main() {
+    auto ptr{ createResource() };
+}
+#+end_src
+
+[fn:4]
+#+begin_comment 控制块示例
+*场景1*
+shared指针A指向资源R：控制块use_count=1、weak_count=1
+shared指针B指向R    ：use_count=2、weak_count=1
+销毁B               ：use_count=1、weak_count=1
+销毁A               ：use_count=0、weak_count=0
+
+*场景2*
+shared指针A指向资源R：控制块use_count=1、weak_count=1
+shared指针B指向R    ：use_count=2、weak_count=1
+weak指针W指向R      ：use_count=2、weak_count=2
+销毁B               ：use_count=1、weak_count=2
+销毁A               ：use_count=0、weak_count=1
+#+end_comment
+
+[fn:5]
+#+name: 错误做法 从资源初始化share指针
+#+begin_src cpp :results output :namespaces std :includes <iostream> <memory>
+class Resource {
+public:
+  Resource() { std::cout << "Resource acquired\n"; }
+  ~Resource() { std::cout << "Resource destroyed\n"; }
+};
+
+int main() {
+ Resource* res { new Resource };
+ std::shared_ptr<Resource> ptr1 { res };   // 直接初始化 ptr1（从资源初始化）
+ {
+   std::shared_ptr<Resource> ptr2 { res }; // FIXME 直接初始化 ptr2（从资源初始化）
+   std::cout << "Killing one shared pointer\n";
+ } // ptr2 超出作用域
+ std::cout << "Killing another shared pointer\n";
+} // ptr1 超出作用域
+#+end_src
+
+#+name: 正确做法
+#+begin_src cpp :results output :namespaces std :includes <iostream> <memory>
+class Resource
+{
+public:
+  Resource() { std::cout << "Resource acquired\n"; }
+  ~Resource() { std::cout << "Resource destroyed\n"; }
+};
+
+int main()
+{
+  Resource* res { new Resource };
+  std::shared_ptr<Resource> ptr1{ res };     // 直接初始化 ptr1 （用资源直接初始化）
+  {
+    std::shared_ptr<Resource> ptr2 { ptr1 }; // 拷贝初始化 ptr2 （复制的形式初始化）
+    std::cout << "Killing one shared pointer\n";
+  } // ptr2 超出作用域
+  std::cout << "Killing another shared pointer\n";
+  return 0;
+} // ptr1超出作用域
+#+end_src
+
+
+
+[fn:6]
+#+name: 循环引用
+#+begin_src cpp :results output :namespaces std :includes <iostream> <memory> <string>
+// 循环引用可以是 a -> b、b -> a，也能是三个对象：a -> b、b -> c、c -> a
+class Person {
+  std::string m_name;
+  std::shared_ptr<Person> m_partner; // 指向 Person 的指针
+public:
+  Person(const std::string &name): m_name(name) { std::cout << m_name << " created\n"; }
+  ~Person() { std::cout << m_name << " destroyed\n"; }
+  friend bool partnerUp(std::shared_ptr<Person> &p1, std::shared_ptr<Person> &p2) {
+    if (!p1 || !p2)
+      return false;
+    p1->m_partner = p2; // p1 内部的共享指针指向 p2
+    p2->m_partner = p1; // p2 内部的共享指针指向 p1
+    std::cout << p1->m_name << " is now partnered with " << p2->m_name << '\n';
+    return true;
+  }
+};
+
+int main() {
+  auto lucy { std::make_shared<Person>("Lucy") };  // lucy 指向 Person类（Lucy）
+  auto ricky { std::make_shared<Person>("Ricky") }; // lucy 指向 Person类（Ricky）
+  partnerUp(lucy, ricky); // Lucy 和 Ricky 互指
+                          // Lucy 被两个指针指向：lucy、Ricky 内部的 m_partner；Ricky同理被两个指针指
+} // 此时释放了两个指针：lucy、ricky；但 Lucy 和 Ricky 还被指针指向（Ricky、Lucy 内部的 m_partner），因此都不会释放
+#+end_src
+
+#+name:解决 循环引用
+#+begin_src cpp :results output :namespaces std :includes <iostream> <memory> <string>
+class Person
+{
+  std::string m_name;
+  std::weak_ptr<Person> m_partner; // 内部改为 std::weak_ptr
+public:
+  Person(const std::string &name): m_name(name) { std::cout << m_name << " created\n"; }
+  ~Person() { std::cout << m_name << " destroyed\n"; }
+  friend bool partnerUp(std::shared_ptr<Person> &p1, std::shared_ptr<Person> &p2)
+  {
+    if (!p1 || !p2)
+      return false;
+    p1->m_partner = p2; // std::weak_ptr 是观察者，不是所有者，因此不会增加 引用计数
+    p2->m_partner = p1;
+    std::cout << p1->m_name << " is now partnered with " << p2->m_name << '\n';
+    return true;
+  }
+};
+
+int main()
+{
+  auto lucy { std::make_shared<Person>("Lucy") };
+  auto ricky { std::make_shared<Person>("Ricky") };
+  partnerUp(lucy, ricky);
+  return 0;
+} // Lucy、Ricky 正常销毁
+#+end_src
+
+[fn:7]
+#+begin_src cpp :results output :namespaces std :includes <iostream> <memory> <string>
+class Person {
+	std::string m_name;
+	std::weak_ptr<Person> m_partner; // note: This is now a std::weak_ptr
+public:
+	Person(const std::string &name) : m_name(name) {
+		std::cout << m_name << " created\n";
+	}
+
+	~Person() {
+		std::cout << m_name << " destroyed\n";
+	}
+
+	friend bool partnerUp(std::shared_ptr<Person> &p1, std::shared_ptr<Person> &p2) {
+		if (!p1 || !p2)
+			return false;
+
+		p1->m_partner = p2;
+		p2->m_partner = p1;
+
+		std::cout << p1->m_name << " is now partnered with " << p2->m_name << '\n';
+
+		return true;
+	}
+  // NOTE 使用 lock() 将  weak_ptr 转换为 shared_ptr
+	std::shared_ptr<Person> getPartner() const { return m_partner.lock(); }
+
+	const std::string& getName() const { return m_name; }
+};
+
+int main() {
+	auto lucy { std::make_shared<Person>("Lucy") };
+	auto ricky { std::make_shared<Person>("Ricky") };
+
+	partnerUp(lucy, ricky);
+
+	auto partner = ricky->getPartner(); // get shared_ptr to Ricky's partner
+	std::cout << ricky->getName() << "'s partner is: " << partner->getName() << '\n';
+}
+#+end_src
+
+#+RESULTS:
+: Lucy created
+: Ricky created
+: Lucy is now partnered with Ricky
+: Ricky's partner is: Lucy
+: Ricky destroyed
+: Lucy destroyed
+
+[fn:8]
+#+begin_src cpp :results output :namespaces std :includes <iostream> <memory>
+// h/t to reader Waldo for an early version of this example
+class Resource {
+public:
+	Resource() { std::cerr << "Resource acquired\n"; }
+	~Resource() { std::cerr << "Resource destroyed\n"; }
+};
+
+// Returns a std::weak_ptr to an invalid object
+std::weak_ptr<Resource> getWeakPtr() {
+	auto ptr{ std::make_shared<Resource>() };
+	return std::weak_ptr<Resource>{ ptr };
+} // ptr goes out of scope, Resource destroyed
+
+// Returns a dumb pointer to an invalid object
+Resource* getDumbPtr() {
+	auto ptr{ std::make_unique<Resource>() };
+	return ptr.get();
+} // ptr goes out of scope, Resource destroyed
+
+int main() {
+	auto dumb{ getDumbPtr() };
+	std::cout << "Our dumb ptr is: " << ((dumb == nullptr) ? "nullptr\n" : "non-null\n");
+
+	auto weak{ getWeakPtr() };
+	std::cout << "Our weak ptr is: " << ((weak.expired()) ? "expired\n" : "valid\n"); // 用 expired() 判断是否指向无效对象
+}
+#+end_src

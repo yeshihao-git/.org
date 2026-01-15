@@ -1,21 +1,77 @@
 :PROPERTIES:
 :ID:       04b223e7-c9e1-4c4b-a75d-733e9f16c972
+:ROAM_ALIASES: 链接器
 :END:
-#+title: ld(链接器)
-#+filetags: cpp
+#+title: ld
+#+filetags: gcc
 
-* 使用
-** 链接问题
-1. 确认库是否存在：[[id:5c64ecb1-a49c-4a4e-972e-5438c0c278eb][find]]
-2. 若存在且在/etc/ld.so.conf列出的路径：[[id:24769cfd-2851-426c-85bb-ff8b2502660d][ldconfig]]
-3. 否则添加环境变量：export LD_LIBRARY_PATH=/path/to/libs:$LD_LIBRARY_PATH
-** 查看链接器搜索路径
-1. ld --verbose | grep SEARCH_DIR
+* ld
+- 链接器 :: [[id:3aa872a4-290a-4fc8-8e37-add919e44822][gcc]]工具链的一部分。在 *链接阶段* ，将编译生成的 目标文件和库文件 链接成 可执行文件/动态链接库（ld库搜索路径在链接阶段）
 
 
+** 库链接问题
+:PROPERTIES:
+:ID:       57af2ce9-f7c0-4976-b751-8003028012c2
+:END:
+[[id:c4d4c220-74cf-4361-a16b-06db39d349a7][ldd]] 查看是否链接库，（若链接）查看库版本是否正确
 
-* 概念
-** 链接器查找顺序
-1. [[id:ec7aef91-2628-4ba9-b300-16652314877f][linux]]环境变量：LD_LIBRARY_PATH
-2. 系统缓存：/etc/ld.so.cache => 由[[id:24769cfd-2851-426c-85bb-ff8b2502660d][ldconfig]]根据/etc/ld.so.conf中列出的路径生成
-3. 默认系统路径
+1. （若未链接）确认库是否存在
+#+begin_comment
+fd或find 搜索 /usr/lib或/usr/local/lib 等路径
+#+end_comment
+
+2. （若库存在）确认 ld 的搜索路径： =ld --verbose | grep SEARCH_DIR=
+#+name: ld库搜索路径
+#+begin_comment
+a. 环境变量：LD_LIBRARY_PATH
+b. 系统缓存：/etc/ld.so.cache（ldconfig 根据 =/etc/ld.so.conf= 中列出的路径生成）
+c. 默认系统路径
+#+end_comment
+
+3. （若不在搜索路径）在.bashrc / .zshrc 中添加环境变量
+#+begin_example bash
+export LD_LIBRARY_PATH=/path/to/libs:$LD_LIBRARY_PATH
+#+end_example
+
+
+* ldd
+:PROPERTIES:
+:ID:       c4d4c220-74cf-4361-a16b-06db39d349a7
+:END:
+*what* ：动态链接库依赖分析工具（列出可执行文件/动态链接库 运行时依赖的所有动态链接库）
+*why*  ：用于调试动态链接问题
+1. 运行时库缺失
+2. 库版本使用错误
+
+
+** 快速开始
+#+begin_example bash
+ldd <二进制文件/动态链接库>
+#+end_example
+
+
+* ldconfig
+:PROPERTIES:
+:ID:       a839d505-6c70-48cb-9218-3610be13161b
+:END:
+更新共享库缓存的命令（/etc/ld.so.cache），建立库文件的软连接；一般在新安装库后执行，以此让系统识别库
+
+
+** 快速开始
+#+begin_example bash
+sudo ldconfig # 新安装库后，执行，让系统识别库
+#+end_example
+
+
+* ln
+:PROPERTIES:
+:ID:       a428f701-0d12-4e9c-9037-0ae4ffd14f6a
+:END:
+硬/软连接 创建命令
+
+
+** 快速开始
+#+begin_example bash
+ln <源路径> <目标路径>    # 创建 硬链接
+ln -s <源路径> <目标路径> # 创建 软链接
+#+end_example

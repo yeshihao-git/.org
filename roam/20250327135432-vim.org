@@ -4,7 +4,8 @@
 #+title: vim
 #+filetags: tools
 
-* 快速开始
+* vim
+** 快速开始
 #+name: 普通模式 -> 插入模式
 #+begin_example bash
 o      # 在下⽅插⼊⼀⾏
@@ -103,13 +104,17 @@ C-v # 选中块进入可视模式
 :q! # 强制退出
 #+end_example
 
-
-* leetcode vim模式复制文本到系统剪切板
+** leetcode vim模式复制文本到系统剪切板
+:PROPERTIES:
+:ID:       7ac06fb0-aa2f-4597-abe3-3fe15763237d
+:END:
 1. 鼠标选中
 2. Ctrl + Insert
 
-
-* vim批量注释
+** vim批量注释
+:PROPERTIES:
+:ID:       d08d0716-6afe-4eda-82bd-4d89c9271f25
+:END:
 1. Ctrl + v
 2. jk选择要注释的行
 3. I => 输入注释符号

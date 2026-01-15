@@ -1,0 +1,92 @@
+:PROPERTIES:
+:ID:       84ff4fab-6dcd-4a6c-8486-d49ba195d94a
+:END:
+#+title: 流程控制
+#+filetags: cpp
+
+* 流程控制
+- 流程控制 :: 编程语言 通过 特定语句 *控制程序执行顺序* ，分为：
+  1. [[id:698286a8-4df5-483a-8f84-122fe2925019][选择结构]]
+  2. [[id:9ee3f57b-84a7-4bcb-9727-ff0459babdf8][循环结构]]
+  3. [[id:7e716d99-bf27-468d-9bb9-2c293f740c3b][跳转结构]]
+
+
+** 选择结构
+:PROPERTIES:
+:ID:       698286a8-4df5-483a-8f84-122fe2925019
+:END:
+- 选择结构 :: 根据条件判断，执行不同逻辑
+  1. if-else
+  2. [[id:6d78f13a-e25c-4e13-85e4-deb61f6fdc24][switch-case]]
+
+
+*** switch-case
+:PROPERTIES:
+:ID:       6d78f13a-e25c-4e13-85e4-deb61f6fdc24
+:END:
+- switch-case :: switch 基于 *整型/[[id:d091d455-5933-4047-92fb-4c2d2d2f7ff9][枚举]]* 匹配 case块，实现多分支选择执行
+  1. 使用 =break= 或 return 避免分支 *穿透执行* （case块 缺少 break 或 return，继续执行后面的 case块） [fn:1]
+  2. =default= 处理未匹配情况
+  3. 所有case块 *共享 switch作用域*
+#+begin_src cpp
+switch(整型/枚举) {
+    case 值1: // 类似 if(整型/枚举 == 值1)
+      语句;
+      break;
+    case 值2: // 所有case块共享 switch作用域，除非 case块 使用 {}
+      语句;
+      break;
+    default:  // 处理未匹配情况
+      语句;
+      break;
+}
+#+end_src
+
+
+
+** 循环结构
+:PROPERTIES:
+:ID:       9ee3f57b-84a7-4bcb-9727-ff0459babdf8
+:END:
+- 循环结构 :: 条件满足时，重复执行某段逻辑
+  1. for
+  2. while
+  3. do-while
+
+
+** 跳转结构
+:PROPERTIES:
+:ID:       7e716d99-bf27-468d-9bb9-2c293f740c3b
+:END:
+- 跳转结构 :: 主动改变程序执行顺序
+  1. break
+  2. continue
+  3. return
+  4. goto
+
+
+* Footnotes
+
+[fn:1]
+#+begin_src cpp :results output :namespaces std :includes <iostream>
+int main() {
+    switch (2) {
+    case 1: // Does not match
+        std::cout << 1 << '\n'; // Skipped
+    case 2: // Match!
+        std::cout << 2 << '\n'; // Execution begins here
+    case 3:
+        std::cout << 3 << '\n'; // This is also executed
+    case 4:
+        std::cout << 4 << '\n'; // This is also executed
+    default:
+        std::cout << 5 << '\n'; // This is also executed
+    }
+}
+#+end_src
+
+#+RESULTS:
+: 2
+: 3
+: 4
+: 5

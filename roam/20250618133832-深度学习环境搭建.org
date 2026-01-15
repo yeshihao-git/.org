@@ -1,43 +1,26 @@
 :PROPERTIES:
 :ID:       6b621bcc-4bcb-45b2-a329-de610826fef7
 :END:
-#+title: deep learning环境搭建与实验
+#+title: 大论文实验
 #+filetags: deep_learning
 
-* 论文素材
-** InfoNCE
-信息噪声对比估计，对比学习中最核心、最常用的损失函数之一，核心思想是通过 区分正负样本 来优化 模型对数据特征的学习
-三元组：锚点a、正样本p、副样本n1 n2 n3...；优化：锚点与正样本的相似度 > 与所有负样本的相似度
-*** 图:InfoNCE公式 :ATTACH:
-:PROPERTIES:
-:ID:       9964171b-789b-4651-a79f-b7b9a91214c3
-:END:
-[[attachment:_20250915_204352screenshot.png]]
-sim(x,y) 为 余弦相似度公式
-
-
-* 思路
-- 消息传播方式 => MGDN 替换模块 查看后续工作的论文（工具？）
-- 3张图 => 改成2张：早期融合text和graph，再通过MGDN进行消息传播 => 可能可以减少计算量，提高text和graph模态的交互
-
-
 * 实验
-|   | 方法                | 类别           | 结果         | 来源   | 代码         |
-|---+---------------------+----------------+--------------+--------+--------------|
-| x | OSF                 | 多模态融合     | 普遍大幅降低 | 豆包ai |              |
-| - | GMU                 | 门控多模态融合 | 普遍小幅降低 | [[https://blog.csdn.net/zly_Always_be/article/details/135634388#pytorch_31][CSDN]]   | [[id:f7009f6d-ea96-49ad-97a3-65cb23404585][GMU]]          |
-| + | SMORE：去噪融合模块 | 频域去噪、融合 | 提升1个点    |        | [[id:a7eede37-3607-40fe-9d34-f6df4dd2ccde][频域去噪融合]] |
-| x | MGCN                |                | 降低         | [[https://github.com/enoche/MMRec/tree/master][github]] |              |
-
-** MIG_GT 张量形状
+** 主实验
+*** MIG_GT 张量形状
 融合前：   emb_h、t_h、v_h              形状 [26495, 64]
 融合后：   combined_h                   形状 [26495, 64]
 MLP处理前：item_t_feat、item_v_feat     形状 [7050，384]
 
-** MIG_GT 实验
-论文
+*** MIG_GT 实验
+|--------+--------+--------+--------|
+|   论文 |        |        |        |
+|--------+--------+--------+--------|
 | 0.0665 | 0.1021 | 0.0361 | 0.0452 |
-复现
+|--------+--------+--------+--------|
+
+|--------+--------+---------+---------+--------------------|
+|   复现 |        |         |         |                    |
+|--------+--------+---------+---------+--------------------|
 | 0.0654 | 0.1015 |  0.0356 |  0.0448 | baby               |
 | 0.0668 | 0.1031 |  0.0365 |  0.0458 | baby(频域去噪)     |
 | 0.0014 | 0.0016 |  0.0009 |  0.0010 |                    |
@@ -49,21 +32,52 @@ MLP处理前：item_t_feat、item_v_feat     形状 [7050，384]
 | 0.0634 | 0.0925 |  0.0353 |  0.0427 | clothing           |
 | 0.0639 | 0.0932 |  0.0348 |  0.0421 | clothing(频域去噪) |
 | 0.0005 | 0.0007 | -0.0005 | -0.0004 |                    |
+|--------+--------+---------+---------+--------------------|
+
+
+** 模块
+*** 频域去噪融合
+:PROPERTIES:
+:ID:       a7eede37-3607-40fe-9d34-f6df4dd2ccde
+:END:
+#+begin_src python
+class SpectralConv(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.embedding_dim = 64
+        # 初始化可学习权重（实部+虚部）
+        self.image_complex_weight = nn.Parameter(torch.randn(1, self.embedding_dim // 2 + 1, 2, dtype=torch.float32))
+        self.text_complex_weight = nn.Parameter(torch.randn(1, self.embedding_dim // 2 + 1, 2, dtype=torch.float32))
+        self.fusion_complex_weight = nn.Parameter(torch.randn(1, self.embedding_dim // 2 + 1, 2, dtype=torch.float32))
+
+    def spectrum_convolution(self, image_embeds, text_embeds):
+            """
+                Modality Denoising & Cross-Modality Fusion
+                """
+            image_fft = torch.fft.rfft(image_embeds, dim=1, norm='ortho')
+            text_fft = torch.fft.rfft(text_embeds, dim=1, norm='ortho')
+
+            image_complex_weight = torch.view_as_complex(self.image_complex_weight)
+            text_complex_weight = torch.view_as_complex(self.text_complex_weight)
+            fusion_complex_weight = torch.view_as_complex(self.fusion_complex_weight)
+
+            #   Uni-modal Denoising
+            image_conv = torch.fft.irfft(image_fft * image_complex_weight, n=image_embeds.shape[1], dim=1, norm='ortho')
+            text_conv = torch.fft.irfft(text_fft * text_complex_weight, n=text_embeds.shape[1], dim=1, norm='ortho')
+
+            #   Cross-modality fusion
+            fusion_conv = torch.fft.irfft(text_fft * image_fft * fusion_complex_weight, n=text_embeds.shape[1], dim=1, norm='ortho')
+
+            return image_conv, text_conv, fusion_conv
+#+end_src
 
 
 
 
 
-* trick
-- 归一化 :: *加速训练* ，缓解 *梯度消失/爆炸* 问题
-  数据分布 是数据在不同取值上的规律，可以通过均值和方差决定，神经网络对于数据分布很敏感，如果输入数据的范围差距过大，则会出现梯度不稳定，因此需要将数据归一化为 均值为0、方差为1
-  - Dropout :: 随机丢弃部分神经元，防止 *过拟合* ，增强模型的泛化能力
-- 残差连接 :: 极端情况下，即使增加的层什么都没有学习到，深层网络的性能也至少和浅层网络一样
-- 激活函数 :: 引入非线性，使神经网络可以 *拟合复杂函数* （否则多层线性变换等价于单层）
 
-
-* 复现
-** MIG-GT [[https://github.com/CrawlScript/MIG-GT][github]]
+** 复现
+*** MIG-GT
 1. conda创建环境python3.8
 2. torch安装：torch==1.12.1+cu113；见 [[id:cfe89b94-ace5-4816-896f-a1ffce8d10c5][pip安装torch(带cuda)]]
    #+begin_src bash
@@ -80,6 +94,430 @@ MLP处理前：item_t_feat、item_v_feat     形状 [7050，384]
    python main.py --gpu 0 --seed 1 --dataset baby --result_dir results --method mig_gt
    #+end_src
 
-** FREEDOM [[https://github.com/enoche/FREEDOM][参考]]
+*** FREEDOM
 1. conda创建环境python3.8
 2. torch安装：torch==1.12.1+cu113
+
+
+* 概念
+- 归一化 :: *加速训练* ，缓解 *梯度消失/爆炸* 问题
+  数据分布 是数据在不同取值上的规律，可以通过均值和方差决定，神经网络对于数据分布很敏感，如果输入数据的范围差距过大，则会出现梯度不稳定，因此需要将数据归一化为 均值为0、方差为1
+  - Dropout :: 随机丢弃部分神经元，防止 *过拟合* ，增强模型的泛化能力
+- 残差连接 :: 极端情况下，即使增加的层什么都没有学习到，深层网络的性能也至少和浅层网络一样
+- 激活函数 :: 引入非线性，使神经网络可以 *拟合复杂函数* （否则多层线性变换等价于单层）
+
+
+** 随机数种子
+用于固定模型训练过程中产生的随机数，确保实验结果可复现（多次运行：相同代码 + 环境 = 相同结果）；比如：模型权重、数据采样、droupout、噪声注入都是随机的
+
+
+** 模板过拟合
+*** 产生原因
+1. 模型参数大
+2. 训练数据小
+
+*过拟合* 训练集上效果好，验证集/测试集上效果差 => 因为模型没有从训练集中学到普遍的规律 => 对于新数据泛化能力差
+*欠拟合* 训练集、验证集/测试集上效果差
+*训练集、验证集、测试集* --类比--> 模型学习知识、测试模型学习的成果、测试模型最终的效果
+
+
+*** 解决方法 [[https://www.cnblogs.com/LXP-Never/p/13755354.html][参考]]
+1. 数据增强 => 增加数据量
+2. 正则化 [[https://blog.csdn.net/weixin_41960890/article/details/104891561][参考]]
+   1) L1正则化：将不重要的特征的权重直接归0；但可能会丢弃有用的特征
+   2) L2正则化：将所有特征的权重变小，但不清0；减少所有特征的影响力
+3. droupout
+4. 早停
+
+*早停* 在模型训练误差减少，测试误差开始增加时 即时停止
+
+
+** self-attention(自注意力机制)
+*** 简化版本(出于面试时间考虑)
+#+begin_src python
+import math
+import torch
+import torch.nn as nn
+
+class SelfAttentionV1(nn.Module):
+    def __init__(self, dim):
+        super().__init__()
+
+        self.dim = dim
+
+        self.query_proj = nn.Linear(dim, dim)
+        self.key_proj = nn.Linear(dim, dim)
+        self.value_proj = nn.Linear(dim, dim)
+
+    def forward(self, X):
+        # NOTE X、q、k、v (batch, seq, dim)
+        q = self.query_proj(X);
+        k = self.key_proj(X);
+        v = self.value_proj(X);
+        # NOTE attention_weight (batch, seq, seq)
+        attention_weight = torch.softmax(q @ k.transpose(-1, -2) / math.sqrt(self.dim), dim=-1) # q @ k.transpose(-1, -2) -> (batch, seq, dim) @ (batch, dim, seq) -> (batch, seq, seq)
+        print(attention_weight)
+        print(v)
+
+        # NOTE output (batch, seq, dim)
+        output = attention_weight @ v # (batch, seq, seq) @ (batch, seq, dim) -> (batch, seq, dim)
+
+        return output
+
+X = torch.rand(3, 2, 4)    # NOTE NOTE X 为输入，3：句子个数，2：每个句子的单词个数，4：每个单词的特征
+                           # 由下面张量结果可知 attention_weight @ v 是计算单词之间的关注度
+net = SelfAttentionV1(4)
+net(X)
+
+# attention_weight 的张量
+# tensor([[[0.4948, 0.5052],
+#          [0.5055, 0.4945]],
+#
+#         [[0.5101, 0.4899],
+#          [0.4778, 0.5222]],
+#
+#         [[0.4861, 0.5139],
+#          [0.4810, 0.5190]]], grad_fn=<SoftmaxBackward0>)
+
+# v 的张量
+# tensor([[[-0.1066,  0.4842,  0.3614,  0.5448],
+#          [-0.1046,  0.8612,  0.1977,  0.5434]],
+#
+#         [[-0.3678,  0.1672,  0.2547,  0.5061],
+#          [-0.1881,  0.5223,  0.1250,  0.4141]],
+#
+#         [[-0.4024,  0.6872,  0.0457,  0.4494],
+#          [-0.7761,  0.5528,  0.0219,  0.3440]]], grad_fn=<ViewBackward0>)
+
+# 最终张量
+# tensor([[[-0.0996, -0.5656,  0.9393,  0.8216],
+#          [-0.0997, -0.5657,  0.9388,  0.8219]],
+#
+#         [[-0.0638, -0.6147,  0.7391,  0.8268],
+#          [-0.0648, -0.6141,  0.7366,  0.8264]],
+#
+#         [[-0.1713, -0.3363,  1.0328,  0.4337],
+#          [-0.1736, -0.3400,  1.0371,  0.4412]]], grad_fn=<UnsafeViewBackward0>)
+#+end_src
+
+*** 效率优化
+#+name: 可以将qkv矩阵合并成一个大矩阵计算
+#+begin_src python
+class SelfAttentionV2(nn.Module):
+    def __init__(self, dim) -> None:
+        super().__init__()
+
+        self.dim = dim
+
+        self.proj = nn.Linear(dim, dim*3) # 合并为大矩阵计算
+
+    def forward(self, X):
+        # NOTE X (batch, seq, dim)
+        # NOTE qkv (batch, seq, dim*3)
+        qkv = self.proj(X)
+        # NOTE q、k、v (batch, seq, dim)
+        q, k, v = torch.split(qkv, self.dim, dim=-1)
+        # NOTE attention_weight (batch, seq, seq)
+        attention_weight = torch.softmax(q @ k.transpose(-1, -2) / math.sqrt(self.dim), dim=-1)
+
+        output = attention_weight @ v
+        return output
+#+end_src
+
+*** 面试完整版(加入细节：dropout、attention_mask、ouput_proj 输出映射：用于多头注意力)
+#+begin_src python
+class SelfAttentionV3(nn.Module):
+    def __init__(self, dim) -> None:
+        super().__init__()
+
+        self.dim = dim
+
+        self.query_proj = nn.Linear(dim, dim)
+        self.key_proj = nn.Linear(dim, dim)
+        self.value_proj = nn.Linear(dim, dim)
+
+        self.attention_drop = nn.Dropout(0.1)
+
+        self.output_proj = nn.Linear(dim, dim)
+
+    def forward(self, X, attention_mask=None):
+        # NOTE X、q、k、v (batch, seq, dim)
+        q = self.query_proj(X)
+        k = self.key_proj(X)
+        v = self.value_proj(X)
+
+        # NOTE attention_weight (batch, seq, seq)
+        attention_weight = q @ k.transpose(-1, -2) / math.sqrt(self.dim)
+        print(f'原始矩阵：\n{attention_weight}', attention_weight)
+
+        # 使用 mask矩阵
+        if attention_mask is not None:
+            attention_weight = attention_weight.masked_fill(attention_mask == 0, float("-inf"))
+        print(f'mask后：\n{attention_weight}', attention_weight)
+
+        attention_weight = torch.softmax(attention_weight, dim=-1)
+        print(f'softmax后：\n{attention_weight}', attention_weight)
+
+        attention_weight = self.attention_drop(attention_weight)
+
+        # NOTE output (batch, seq, dim)
+        output = attention_weight @ v
+        return self.output_proj(output)
+
+X = torch.rand(3, 4, 2)
+b = torch.tensor(
+    [
+        [1, 1, 1, 0],
+        [1, 1, 0, 0],
+        [1, 0, 0, 0],
+    ]
+)
+mask = b.unsqueeze(dim=1).repeat(1, 4, 1)
+net = SelfAttentionV3(2)
+net(X, mask).shape
+
+# X形状：3，4，2 -> 3个句子、每个句子4个单词、每个单词2个特征
+
+# 原始矩阵：
+# tensor([[[ 0.1860, -0.0221,  0.0466,  0.1395],
+#          [ 0.2200,  0.0699,  0.1282,  0.1752],
+#          [ 0.2534,  0.0445,  0.1202,  0.1980],
+#          [ 0.1363, -0.0080,  0.0404,  0.1031]],
+#
+#         [[ 0.0873,  0.1401,  0.0036,  0.0322],
+#          [ 0.0440,  0.0931, -0.0226, -0.0163],
+#          [ 0.0995,  0.1158,  0.0517,  0.1003],
+#          [ 0.1781,  0.2689,  0.0256,  0.0902]],
+#
+#         [[ 0.1152,  0.1486,  0.1136,  0.2317],
+#          [ 0.0539,  0.0798,  0.0504,  0.1347],
+#          [ 0.1440,  0.1846,  0.1423,  0.2867],
+#          [ 0.0133,  0.0502,  0.0044,  0.1116]]], grad_fn=<DivBackward0>)
+
+# mask后：
+# tensor([[[ 0.1860, -0.0221,  0.0466,    -inf],           # mask最后1个单词，关注前3个单词
+#          [ 0.2200,  0.0699,  0.1282,    -inf],
+#          [ 0.2534,  0.0445,  0.1202,    -inf],
+#          [ 0.1363, -0.0080,  0.0404,    -inf]],
+#
+#         [[ 0.0873,  0.1401,    -inf,    -inf],           # mask最后2个单词，关注前2个单词
+#          [ 0.0440,  0.0931,    -inf,    -inf],
+#          [ 0.0995,  0.1158,    -inf,    -inf],
+#          [ 0.1781,  0.2689,    -inf,    -inf]],
+#
+#         [[ 0.1152,    -inf,    -inf,    -inf],           # mask最后3个单词，关注前1个单词
+#          [ 0.0539,    -inf,    -inf,    -inf],
+#          [ 0.1440,    -inf,    -inf,    -inf],
+#          [ 0.0133,    -inf,    -inf,    -inf]]], grad_fn=<MaskedFillBackward0>)
+
+# softmax后：值落在 [0,1] 之间，且和为 1
+# tensor([[[0.3729, 0.3028, 0.3243, 0.0000],
+#          [0.3606, 0.3104, 0.3290, 0.0000],
+#          [0.3722, 0.3020, 0.3258, 0.0000],
+#          [0.3605, 0.3120, 0.3275, 0.0000]],
+#
+#         [[0.4868, 0.5132, 0.0000, 0.0000],
+#          [0.4877, 0.5123, 0.0000, 0.0000],
+#          [0.4959, 0.5041, 0.0000, 0.0000],
+#          [0.4773, 0.5227, 0.0000, 0.0000]],
+#
+#         [[1.0000, 0.0000, 0.0000, 0.0000],
+#          [1.0000, 0.0000, 0.0000, 0.0000],
+#          [1.0000, 0.0000, 0.0000, 0.0000],
+#          [1.0000, 0.0000, 0.0000, 0.0000]]], grad_fn=<SoftmaxBackward0>)
+
+# torch.Size([3, 4, 2])
+#+end_src
+
+
+** MultiHead-Self-Attention(多头自注意力机制)
+#+begin_src python
+import math
+import torch
+import torch.nn as nn
+
+class MultiHeadAttention(nn.Module):
+    def __init__(self, hidden_dim, nums_head) -> None:
+        super().__init__()
+
+        self.hidden_dim = hidden_dim
+
+        self.nums_head = nums_head
+        self.head_dim = hidden_dim // nums_head
+
+        self.q_proj = nn.Linear(hidden_dim, hidden_dim) # hidden_dim = head_dim * nums_head
+        self.k_proj = nn.Linear(hidden_dim, hidden_dim)
+        self.v_proj = nn.Linear(hidden_dim, hidden_dim)
+
+        self.atten_dropout = nn.Dropout(0.1)
+
+        self.output_proj = nn.Linear(hidden_dim, hidden_dim)
+
+    def forward(self, X, attention_mask=None):
+        # X (batch, seq, hidden_dim)
+        batch_size, seq_len, _ = X.size()
+
+        # Q、K、V (batch, seq, hidden_dim)
+        Q = self.q_proj(X)
+        K = self.k_proj(X)
+        V = self.v_proj(X)
+
+        # 拆分head -> (batch, nums_head, seq, head_dim)
+        q_state = Q.view(batch_size, seq_len, self.nums_head, self.head_dim).permute(0, 2, 1, 3)
+        k_state = K.view(batch_size, seq_len, self.nums_head, self.head_dim).transpose(1, 2)
+        v_state = V.view(batch_size, seq_len, self.nums_head, self.head_dim).transpose(1, 2)
+
+        # 计算注意力权重 attention_weight (batch, nums_head, seq, seq)
+        # 这里并行且独立的计算了每个头，后续 softmax 和 dropout 同样作用于每个头
+        attention_weight = q_state @ k_state.transpose(-1, -2) // math.sqrt(self.head_dim)
+
+        # 掩码
+        if attention_weight is not None:
+            attention_weight = attention_weight.masked_fill(
+                attention_mask == 0, float("-1e20")
+            )
+
+        # 第4个维度 softmax
+        attention_weight = torch.softmax(attention_weight, dim=3)
+        print(attention_weight)
+        attention_weight = self.atten_dropout(attention_weight)
+
+        # ouput_mid (batch, nums_head, seq, head_dim)
+        output_mid = attention_weight @ v_state
+
+        # output_mid (batch, seq, nums_head, head_dim)
+        output_mid = output_mid.transpose(1, 2).contiguous()
+
+        # output (batch, seq, hidden_dim)
+        output = output_mid.view(batch_size, seq_len, -1) # -1 是占位符，batch、seq 固定，第三维自动计算
+                                                          # 这里的 batch_size、seq_len 是前边提取出的
+
+        output = self.output_proj(output)
+        return output
+
+attention_mask = (
+    torch.tensor(
+        [
+            [0, 1],
+            [0, 0],
+            [1, 0],
+        ]
+    )
+    .unsqueeze(1)
+    .unsqueeze(2)
+    .expand(3, 8, 2, 2)
+)
+
+x = torch.rand(3, 2, 128)
+net = MultiHeadAttention(128, 8)
+net(x, attention_mask).shape
+#+end_src
+
+
+** transformer decoder(CausalLM)
+- =transformer decoder= 的流程
+  input -> self-attention -> cross-attention -> FFN
+- =causalLM decoder= 的流程
+  input -> [[id:e4f3deb0-fe49-45d2-85e7-2cc715ad6b1f][self-attention]] -> FFN（[self-attention、FFN] 是一个 Block ，有 N 个）
+#+begin_src python
+import math
+import torch
+import torch.nn as nn
+
+# 写一个 Block
+class SimpleDecoder(nn.Module):
+    def __init__(self, hidden_dim, nums_head, dropout=0.1):
+        super().__init__()
+
+        # self-attention
+        self.nums_head = nums_head
+        self.head_dim = hidden_dim // nums_head
+
+        self.dropout = dropout
+
+        self.layernorm_att = nn.LayerNorm(hidden_dim, eps=0.00001)
+
+        self.q_proj = nn.Linear(hidden_dim, hidden_dim)
+        self.k_proj = nn.Linear(hidden_dim, hidden_dim)
+        self.v_proj = nn.Linear(hidden_dim, hidden_dim)
+        self.o_proj = nn.Linear(hidden_dim, hidden_dim)
+
+        self.drop_att = nn.Dropout(self.dropout)
+
+        # FFN
+        self.up_proj = nn.Linear(hidden_dim, hidden_dim*4)
+        self.down_proj = nn.Linear(hidden_dim*4, hidden_dim)
+        self.layernorm_ffn = nn.LayerNorm(hidden_dim, eps=0.00001)
+        self.act_fn = nn.ReLU()
+
+        self.drop_ffn = nn.Dropout(self.dropout)
+
+
+    def attention_output(self, query, key, value, attention_mask=None):
+        key = key.transpose(2, 3) # (batch, nums_head, head_dim, seq)
+        att_weight = query @ key / math.sqrt(self.head_dim) # (batch, nums_head, seq, seq)
+
+        if attention_mask is not None:
+            # 用提供的 mask，生成下三角矩阵
+            attention_mask = attention_mask.tril()
+            att_weight = att_weight.masked_fill(attention_mask == 0, float("-1e20"))
+        else:
+            # 构造下三角都是1的下三角矩阵
+            attention_mask = torch.ones_like(att_weight).tril()
+            att_weight = att_weight.masked_fill(attention_mask == 0, float("-1e20"))
+
+        att_weight = torch.softmax(att_weight, dim=-1)
+        print(att_weight)
+
+        att_weight = self.drop_att(att_weight)
+
+        mid_output = att_weight @ value # (batch, nums_head, seq, head_dim)
+
+        mid_output = mid_output.transpose(1, 2).contiguous()
+        batch, seq, _, _ = mid_output.size()
+        mid_output = mid_output.view(batch, seq, -1) # (batch, seq, hidden_dim)
+
+        output = self.o_proj(mid_output)
+        return output
+
+
+    def attention_block(self, X, attention_mask=None):
+        batch, seq, _ = X.size()
+        # (batch, nums_head, seq, head_dim)
+        query = self.q_proj(X).view(batch, seq, self.nums_head, -1).transpose(1, 2)
+        key = self.k_proj(X).view(batch, seq, self.nums_head, -1).transpose(1, 2)
+        value = self.v_proj(X).view(batch, seq, self.nums_head, -1).transpose(1, 2)
+
+        output = self.attention_output(
+            query,
+            key,
+            value,
+            attention_mask=attention_mask,
+        )
+        # 层归一化 + 残差连接
+        return self.layernorm_att(X + output)
+
+
+    def ffn_block(self, X):
+        up = self.act_fn(self.up_proj(X))
+        down = self.down_proj(up)
+        down = self.drop_ffn(down)
+        return self.layernorm_ffn(X + down)
+
+
+    def forward(self, X, attention_mask=None):
+        # X (batch, seq, hidden_dim)
+        att_output = self.attention_block(X, attention_mask=attention_mask)
+        ffn_output = self.ffn_block(att_output)
+        return ffn_output
+
+
+x = torch.rand(3, 4, 64)
+net = SimpleDecoder(64, 8)
+mask = (
+    torch.tensor([[1, 1, 1, 1], [1, 1, 0, 0], [1, 1, 1, 0]])
+    .unsqueeze(1).unsqueeze(2).repeat(1, 8, 4, 1)
+)
+
+net(x, mask).shape
+#+end_src

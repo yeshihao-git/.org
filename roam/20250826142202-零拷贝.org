@@ -2,9 +2,9 @@
 :ID:       38a82890-b4b8-4985-978d-7e9dff72a291
 :END:
 #+title: 零拷贝
-#+filetags: operating_system
+#+filetags: os
 
-* 零拷贝 [[https://xiaolincoding.com/os/8_network_system/zero_copy.html#_9-1-%E4%BB%80%E4%B9%88%E6%98%AF%E9%9B%B6%E6%8B%B7%E8%B4%9D][小林coding]]
+* 零拷贝
 通过减少 =CPU上下文切换次数= （用户态/内核态）、 =数据拷贝次数= 来提高 *文件传输* 性能（相较于 [[id:a8a0a3ed-b99d-4638-9530-0fdb0c815676][传统文件传输]]）
 
 具体2种方法：
@@ -14,7 +14,10 @@
 
 *注* ：这里的内核缓冲区是指 [[id:5007d3f1-963b-48d3-88ff-261c4b4e454e][PageCache]]
 
-** 方法1: mmap + write :ATTACH:
+📎 [[https://xiaolincoding.com/os/8_network_system/zero_copy.html#_9-1-%E4%BB%80%E4%B9%88%E6%98%AF%E9%9B%B6%E6%8B%B7%E8%B4%9D][小林coding]]
+
+
+** 方法1: mmap + write（图文） :ATTACH:
 :PROPERTIES:
 :ID:       5e2d966e-25e2-449a-bae7-94af7f42231b
 :END:
@@ -29,7 +32,11 @@ write(sockfd, buf, len);
 4. 通过 DMA 将内核缓冲区数据 *拷贝* 到 网卡
 3次拷贝 + 4次上下文切换（用户态内核态切换）
 
-** 方法2: sendfile
+
+** 方法2: sendfile（图文） :ATTACH:
+:PROPERTIES:
+:ID:       f45b2383-983a-4389-85bc-00cbf975eeca
+:END:
 #+begin_example C
 ssize_t sendfile(int out_fd, int in_fd, off_t* offset, size_t count);
 // out_fd：输出文件描述符（通常是网络套接字 socket）
@@ -37,16 +44,12 @@ ssize_t sendfile(int out_fd, int in_fd, off_t* offset, size_t count);
 // offset：指定从输入文件的哪个位置开始读取数据。若为 NULL，则从当前文件指针位置开始，并自动更新文件指针
 // count ：要传输的字节数
 #+end_example
-sendfile 用于在内核态中拷贝数据
-
-*** 图:sendfile :ATTACH:
-:PROPERTIES:
-:ID:       f45b2383-983a-4389-85bc-00cbf975eeca
-:END:
 [[attachment:_20250826_155042screenshot.png]]
+sendfile 用于在内核态中拷贝数据
 3次拷贝 + 2次上下文切换（用户态内核态切换）
 
-*** 图:sendfile（网卡支持SG-DMA） :ATTACH:
+
+*** 🖼 sendfile（网卡支持SG-DMA） :ATTACH:
 :PROPERTIES:
 :ID:       94e2ca69-cd07-40a2-9a43-4c0526fbbbdd
 :END:
@@ -58,7 +61,7 @@ sendfile 用于在内核态中拷贝数据
 2次拷贝 + 2次上下文切换（用户态内核态切换）
 
 
-* 传统文件传输 :ATTACH:
+* 传统文件传输（图文） :ATTACH:
 :PROPERTIES:
 :ID:       a8a0a3ed-b99d-4638-9530-0fdb0c815676
 :END:
@@ -80,6 +83,7 @@ write(socket, tmp_buf, len);
 现代设备       ：I/O设备（eg：网卡、显卡、硬盘） 一般内置自己的专用DMA控制器
 传统/嵌入式设备：系统中有一个中央的公用的DMA控制器
 #+end_comment
+
 
 ** 有无DMA控制器的I/O过程
 # 以将磁盘数据读取到用户缓冲区为例
@@ -106,5 +110,5 @@ write(socket, tmp_buf, len);
 #+begin_comment
 零拷贝技术要走 PageCache，PageCache 是用于存放常访问的页面，传输小文件还好，传输大文件就会占满 PageCache，大文件要么直接给用户使用，要么从网卡发出去，这导致 PageCache 功能无效化。
 假设传输大文件使用 零拷贝，则大文件会占满 PageCache，导致无法用到缓存，增大性能开销
-异步IO 不涉及 PageCache，具体见：[[roam:图:同步、异步读]]
+异步IO 不涉及 PageCache
 #+end_comment

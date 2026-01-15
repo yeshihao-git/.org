@@ -4,12 +4,79 @@
 #+title: 移动语义
 #+filetags: cpp
 
-* 移动语义 [[https://www.learncpp.com/cpp-tutorial/returning-stdvector-and-an-introduction-to-move-semantics/][learncpp16.5]]
-1. 转移资源所有权（窃取即将销毁对象的资源），减少拷贝的开销
-   *如何实现移动语义？*
-   1) 类支持 [[id:ac154a46-7700-4286-96aa-a45f8d93c6b6][移动构造函数、移动赋值]]
-   2) 用右值 构造、赋值（没有右值，就用 [[id:d4285c38-cefe-4bb5-8ebf-0625bd976fa1][std::move]] 将左值转为右值）
+* 移动语义
+- 移动语义 :: 转移资源所有权（窃取即将销毁对象的资源），避免拷贝开销
 
-2. 支持移动语义的类型
-   1) std::vector
-   2) std::string
+*如何触发移动语义？*
+1. 类支持 [[id:51145ff8-f7e2-462d-96ec-01cb9e35c2cc][移动构造函数]]、移动赋值
+2. 用右值 构造、赋值（[[id:ef985474-470e-4fdd-8388-f4f435f46de3][std::move]] 左值转右值）
+
+*标准库中部分容器支持移动语义*
+1. std::vector
+2. std::string
+#+begin_src cpp
+std::vector<std::string> v;
+std::string str { "Knock" };
+
+v.push_back(str);            // 调用 push_back 左值版本
+v.push_back(std::move(str)); // 调用 push_back 右值版本，触发移动语义
+#+end_src
+
+
+** std::move
+:PROPERTIES:
+:ID:       ef985474-470e-4fdd-8388-f4f435f46de3
+:END:
+- std::move :: （cpp11）[[id:c80a13d1-c8f5-4574-8cfa-d948dc746e51][左值]]转[[id:25d69b3d-61fb-472b-8eef-a7ebf78dbd1c][右值]]，触发 [[id:0512d335-6d3f-4ebc-9021-88424c326876][移动语义]] [fn:1]
+
+
+
+* Footnotes
+
+[fn:1]
+#+name: 拷贝语义
+#+begin_src cpp :results output :namespaces std :includes <iostream> <string>
+template <typename T>
+void mySwapCopy(T& a, T& b) {
+  T tmp { a }; // 触发 拷贝构造
+  a = b;       // 触发 拷贝赋值
+  b = tmp;     // 触发 拷贝赋值
+}
+
+int main() {
+  std::string x{ "abc" };
+  std::string y{ "de" };
+
+  std::cout << "x: " << x << '\n';
+  std::cout << "y: " << y << '\n';
+
+  mySwapCopy(x, y); // 触发 拷贝语义
+
+  std::cout << "x: " << x << '\n';
+  std::cout << "y: " << y << '\n';
+}
+#+end_src
+
+#+name: 移动语义
+#+begin_src cpp :results output :namespaces std :includes <iostream> <string> <utility>
+template <typename T>
+void mySwapMove(T& a, T& b) {
+  // std::move 左值转右值，触发移动语义
+  T tmp { std::move(a) }; // 触发 移动构造
+  a = std::move(b);       // 触发 移动赋值
+  b = std::move(tmp);     // 触发 移动赋值
+}
+
+int main() {
+  std::string x{ "abc" };
+  std::string y{ "de" };
+
+  std::cout << "x: " << x << '\n';
+  std::cout << "y: " << y << '\n';
+
+  mySwapMove(x, y);
+
+  std::cout << "x: " << x << '\n';
+  std::cout << "y: " << y << '\n';
+}
+#+end_src
